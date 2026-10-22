@@ -8,9 +8,11 @@
 #                              becomes summary-<n>.md so the new run's before/after starts clean)
 #   SKIP_LAUNCHER=1 optimize/run.sh   keep the TV's own home screen (firmware that won't let another app be Home)
 #   SKIP_EXTRAS=1 optimize/run.sh     without TV Bro and SmartTube
+# Undo one step or more: optimize/rollback.sh (show, last, to <step>, ...); everything: optimize/reset.sh
 # Before: optimize/setup.sh and optimize/find-tv.sh. Optional packages the household gave up go in
 # optimize/lists/mine.txt (one per line, picked from lists/tcl-optional.txt) before running.
-# Results in optimize/run/: summary.md (before/after), ram-*.txt, backup.txt, report.md, steps.log (times), run.log.
+# Results in optimize/run/: summary.md (before/after), ram-*.txt, backup.txt, report.md, steps.log (times), run.log,
+# snap-<step>.txt and changes.log (for optimize/rollback.sh).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PY="${PY:-optimize/venv/bin/python}"
@@ -39,7 +41,7 @@ title() {
 }
 
 if [ "${1:-}" = again ]; then   # a TV system update can re-enable what we turned off and take Home back
-  rm -f "$RUN"/.done-* "$RUN/steps.log"
+  rm -f "$RUN"/.done-* "$RUN/steps.log" "$RUN"/snap-*.txt "$RUN/changes.log"   # rollback starts from this run
   kept=
   if [ -f "$RUN/summary.md" ]; then   # measure.sh appends: a second run's before/after lines would double up
     n=1; while [ -e "$RUN/summary-$n.md" ]; do n=$((n + 1)); done
@@ -56,7 +58,7 @@ if [ "${1:-}" = status ]; then
   exit 0
 fi
 
-exec > >(tee -a "$RUN/run.log") 2>&1   # everything it says, for optimize/share.sh: its !! lines and dropped connections
+exec > >(tee -a "$RUN/run.log") 2>&1   # everything it says: its !! lines and dropped connections
 
 check_list() {   # never disable what UAD-ng rates Unsafe; show everything that is not "Recommended"
   local out
@@ -140,15 +142,23 @@ if [ -n "$tv_id" ] && [ "$(cat "$RUN/.tv" 2> /dev/null || true)" != "$tv_id" ]; 
   echo "$tv_id" > "$RUN/.tv"
 fi
 
-# when each step started, ended or stopped: optimize/share.sh turns it into how long each took
+# when each step started, ended or stopped
 stamp() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$RUN/steps.log"; }
 trap 'rc=$?; [ "$rc" -eq 0 ] || stamp "stopped ${current:-?} (exit $rc)"' EXIT
+# Steps that change the TV: its state is saved first (once, so a retried step keeps the real "before"), and
+# optimize/rollback.sh can put it back step by step.
+CHANGES=" safe mine tweaks screensaver launcher extras "
 for s in "${STEPS[@]}"; do
   [ -f "$RUN/.done-$s" ] && continue
   current=$s
   echo
   echo "▶ $(title "$s")"
   stamp "start $s"
+  if [[ "$CHANGES" == *" $s "* ]] && [ ! -s "$RUN/snap-$s.txt" ]; then
+    "$PY" -I optimize/snapshot.py save "$RUN/snap-$s.txt.tmp" > /dev/null && mv "$RUN/snap-$s.txt.tmp" "$RUN/snap-$s.txt"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') $s" >> "$RUN/changes.log"
+    echo "   (state saved: optimize/rollback.sh last undoes this step)"
+  fi
   do_step "$s"
   touch "$RUN/.done-$s"
   stamp "done $s"

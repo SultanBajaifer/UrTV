@@ -16,25 +16,26 @@ Or in the Claude desktop app: the **Code** tab, with a **local** folder on this 
 
 ---
 
-Set up my Android TV / Google TV with **تلفزيونك** from https://github.com/tshi-dev/UrTV: a faster TV
+Set up my Android TV / Google TV with **تلفزيونك** from https://github.com/SultanBajaifer/UrTV: a faster TV
 (bloat off, safely), an Arabic home screen, and the screensaver «شاشة تلفزيونك». Talk to me in Arabic (or my
 language); keep commands in English.
 
 ## Start here: three short messages, word for word, before you touch the TV
 
-Everything that needs me comes first; after that you work alone. Your first three messages are fixed: send them in
-this order, each on its own, word for word, and wait for my answer after each. Never skip one (not even the first:
-you can't see my approval settings, so never assume they are already right), never merge them, never assume my
-answers, and never skip or work around anything that asks me (an approval on this computer, «Allow USB
-debugging?» on the TV). Cloning the repo and reading this file before message 1 is fine; nothing else.
+I approve every command you run on this computer myself, one at a time: that is on purpose, so I see what reaches
+my TV. Your first three messages are fixed: send them in this order, each on its own, word for word, and wait for my
+answer after each. Never skip one, never merge them, never assume my answers, and never skip or work around anything
+that asks me (an approval on this computer, «Allow USB debugging?» on the TV). Cloning the repo and reading this
+file before message 1 is fine; nothing else.
 
-**Message 1, approvals.** If you are Codex:
+**Message 1, approvals:**
 
-> قبل نبدأ: من القائمة اللي تحت خانة الكتابة، اختر «Approve for me» للموافقات، عشان ما أوقف أسألك عن كل أمر.
-> وقلّي «تم».
+> قبل نبدأ: خلّ الموافقات على «اسألني كل مرة». بوقف قبل كل خطوة وأشرح لك بسطر وش بتسوي على التلفزيون، وأنت توافق
+> على كل أمر. لا تختار «وافق على كل شي». وقلّي «تم».
 
-Any other agent: the same in your words: ask me to allow running commands and network access in this folder for
-the whole task, and to say «تم».
+Never ask me to approve everything for the whole task, and never suggest an auto-approve or "bypass" mode. Before
+each numbered step below, and before every command that changes the TV, tell me in one plain Arabic line what it
+does and how to undo it (the `optimize/rollback.sh` line), then run it and let me approve it.
 
 **Message 2, the city:**
 
@@ -48,17 +49,19 @@ the whole task, and to say «تم».
 > والباقي بخليه على الافتراضي، وتقدر تطلب تغيير أي شي منه الحين أو بعدين:
 > • جنب الساعة: «آية وحديث اليوم» (أو: مواقيت الصلاة، المسلسلات، الطقس، المباريات، لا شي)
 > • المفضلة: أول ٦ تطبيقات من واجهتك الحالية، بنفس الترتيب
-> • بركّب TV Bro (متصفح للتلفزيون) و SmartTube (يوتيوب بدون إعلانات)، مجانيين من GitHub
+> • بركّب TV Bro (متصفح للتلفزيون) و SmartTube (يوتيوب بدون إعلانات)، بنسخ محددة ومفحوصة (SHA-256)
 > • ما فيه بطاقة في الواجهة الرئيسية، ووقت شاشة التوقف يبقى مثل ما هو، وما أعطّل إضافات TCL الاختيارية
 
-After my answer to message 3, start steps 0 and 1 at once, in the same turn: don't end your turn to wait for me
-again. The only other thing I do is press Allow on the TV, and step 1 tells me when, without stopping.
+After my answer to message 3, go on with steps 0 and 1. Besides approving your commands, the only other thing I do
+is press Allow on the TV, and step 1 tells me when.
 
 Those defaults, unless I change them:
 - the card beside the clock: verse and hadith;
 - the favourites row: the first 6 apps of my current home screen (you note them in step 1), in that order; an icon
   you couldn't name is left out;
-- TV Bro and SmartTube installed (`optimize/run.sh` does it; if I don't want them: `SKIP_EXTRAS=1 optimize/run.sh`);
+- TV Bro and SmartTube installed, only the exact files pinned in `optimize/lists/extras.lock` (if that file is
+  missing, run `optimize/pin-extras.sh` before step 3 and show me the versions it pinned; if I don't want them:
+  `SKIP_EXTRAS=1 optimize/run.sh`);
 - no card on the home screen; the TV's own screensaver delay is kept;
 - nothing from `optimize/lists/tcl-optional.txt` is disabled (`optimize/lists/mine.txt` stays empty);
 - if I pick the episodes card: all genres and languages.
@@ -80,8 +83,8 @@ often you retry, so find out before anything else.
 **Permissions first.** Some agents run commands in a sandbox that blocks the network or starting programs until I
 allow it (Codex on Windows does). The signs are errors like `getaddrinfo() thread failed to start`,
 `Bash/E_ACCESSDENIED` or `Operation not permitted`. They mean "not allowed yet", not "can't reach the TV":
-message 1 is how I allow them (network access and running git, bash and python in this folder, for the whole
-task); if one still appears, send me message 1 again, then go on. On Windows, run every script in Git Bash (they
+ask me to approve that command (network access and running git, bash and python in this folder), one command at a
+time; never ask for the whole task. On Windows, run every script in Git Bash (they
 find a working Python themselves, past the Microsoft Store shortcut); if `bash` isn't found, use its full path:
 `"C:\Program Files\Git\bin\bash.exe" -lc "cd <this folder> && optimize/find-tv.sh --check"`. Run the commands
 here exactly as written and add no quotes, `;` or `|` of your own: PowerShell runs those itself before Git Bash
@@ -90,13 +93,11 @@ sees them (that is why every check has its own script).
 **Codex on Windows:** its sandbox can never start Git Bash (`0xC0000022`, `NtCreateDirectoryObject`: a known Codex
 bug, openai/codex#54449). So run every Git Bash command **outside the sandbox**: request escalated permissions for
 it, with this justification: "Git Bash cannot start inside the Codex Windows sandbox (openai/codex#54449); this runs
-the UrTV setup script the user asked for, in this folder, to reach their TV on their Wi-Fi." With «Approve for me»
-the reviewer decides; when it offers to allow `bash.exe` from now on, take it. I don't need Full access for this.
-A refusal that never reached a reviewer (`you cannot ask for escalated permissions`, `rejected by policy`,
-`sandbox_approval is false`) means approvals are not on «Approve for me»: Codex then rejects every escalation by
-itself (openai/codex#32563). Send me message 1 again, wait for «تم», then run the same command. If a reviewer turns
-it down, ask once more with the same justification and the exact command; if it is turned down again, stop and tell
-me exactly what was refused. Don't port the scripts to PowerShell or look for another way: they need Git Bash.
+the UrTV setup script the user asked for, in this folder, to reach their TV on their Wi-Fi." I approve each one
+myself; never ask to allow `bash.exe` from now on, and I don't use Full access. A refusal that never reached me
+(`you cannot ask for escalated permissions`, `rejected by policy`, `sandbox_approval is false`) means Codex's
+approvals are set to never ask: tell me to set them to ask for approval (not «Approve for me», not Full access),
+wait for «تم», then run the same command. If I turn one down, stop and ask me what I want instead. Don't port the scripts to PowerShell or look for another way: they need Git Bash.
 
 **Missing Git or Python is yours to fix, not mine.** If Git Bash isn't there, or a script says
 `!! No working Python 3 here`, ask me once, then install it yourself and carry on:
@@ -104,7 +105,7 @@ me exactly what was refused. Don't port the scripts to PowerShell or look for an
 `winget install -e --id Python.Python.3.12 --accept-source-agreements --accept-package-agreements`. Then run the
 same command again: the scripts find the new Python without a new terminal. Don't stop and hand me the install.
 ```
-git clone https://github.com/tshi-dev/UrTV     # on Windows into a short folder such as C:/UrTV (a deep one breaks Python)
+git clone https://github.com/SultanBajaifer/UrTV     # on Windows into a short folder such as C:/UrTV (a deep one breaks Python)
 cd UrTV
 git pull                               # always the latest (a command of its own, not joined with the others)
 optimize/find-tv.sh --check            # Windows: always through Git Bash (below), never plain `python`
@@ -116,7 +117,7 @@ optimize/find-tv.sh --check            # Windows: always through Git Bash (below
   `winget install -e --id Git.Git`, `winget install -e --id Python.Python.3.12`, `irm https://claude.ai/install.ps1 | iex`,
   then a new PowerShell window and `claude`). A chat that only links to my computer's folders or screen does not
   run commands on it, so it does not count. Give me the one line to paste there:
-  «Set up my TV with https://github.com/tshi-dev/UrTV: clone it and follow `docs/SETUP-PROMPT.md` step by step. You are on a computer on the same Wi-Fi as the TV.»
+  «Set up my TV with https://github.com/SultanBajaifer/UrTV: clone it and follow `docs/SETUP-PROMPT.md` step by step. You are on a computer on the same Wi-Fi as the TV.»
   Don't look for workarounds.
 
 Signs you are in such a place, if you want to know why: your address is not 192.168.x, 10.x or 172.16–31.x; the
@@ -140,8 +141,12 @@ yet»), delete the folder and clone again.
   disable the TV's own home screen or setup app yourself; only `optimize/install.sh launcher` does that, behind a
   5-minute safety switch.
 - Never uninstall system apps, never `pm clear`, never factory-reset, never touch accounts, Wi-Fi, network or
-  developer settings (turning ADB off locks us out). Never delete `optimize/run/` or `optimize/backup-*.txt`: they
-  are how we undo. Everything is reversible: `optimize/reset.sh` puts the TV back as it came.
+  developer settings; ADB goes off only through `optimize/lockdown.sh` in step 8, after I agree. Never delete
+  `optimize/run/`, `optimize/apks/` or `optimize/backup-*.txt`: they are how we undo. Everything is reversible:
+  `optimize/rollback.sh` undoes one step at a time, `optimize/reset.sh` puts the TV back as it came.
+- Never `git add`, commit or push from this folder, and never copy `optimize/adbkey/` anywhere: it is the key to my
+  TV. Never set `ALLOW_REPLACE=1`, `DOWNGRADE=1` or edit `extras.lock` / `SHA256SUMS.txt` to get past a refusal:
+  a signature or checksum refusal means stop and show me.
 - Ask me before anything not in this prompt. If something fails twice, and the table's fix didn't help, stop,
   show me the output and propose a fix.
 - Never tell me something worked without its proof: the script's own success line, or a screenshot you looked at.
@@ -154,9 +159,9 @@ Lines starting with `!!` are the scripts telling you to stop and act. These are 
 |---|---|---|
 | `getaddrinfo() thread failed to start`, `Bash/E_ACCESSDENIED`, `Operation not permitted` | your sandbox hasn't been allowed network or programs yet | ask me to allow them for this folder (see step 0), then the same command |
 | `0xC0000022` or `NtCreateDirectoryObject` starting Git Bash (Codex) | Codex's sandbox can't start Git Bash | run it outside the sandbox (step 0, «Codex on Windows») |
-| `you cannot ask for escalated permissions`, `rejected by policy` (Codex) | Codex's approvals are not on «Approve for me» | message 1 again, wait for «تم», then the same command |
+| `you cannot ask for escalated permissions`, `rejected by policy` (Codex) | Codex's approvals are set to never ask | ask me to set them to ask for approval (step 0), wait for «تم», then the same command |
 | `ModuleNotFoundError: No module named 'adb_shell'`, or `!! The Python packages aren't in optimize/venv` | `optimize/setup.sh` didn't finish (often pip had no network) | `optimize/setup.sh` again until it ends with «✓ Python ADB client»; its `!!` line says what is wrong. Then the same command; don't stop for this |
-| `!! This folder's path is too long for Windows`, `Filename too long`, or `DLL load failed … too long` | the UrTV folder sits too deep for Windows | clone it again into a short folder: `git clone -c core.longpaths=true https://github.com/tshi-dev/UrTV C:/UrTV`, and carry on there |
+| `!! This folder's path is too long for Windows`, `Filename too long`, or `DLL load failed … too long` | the UrTV folder sits too deep for Windows | clone it again into a short folder: `git clone -c core.longpaths=true https://github.com/SultanBajaifer/UrTV C:/UrTV`, and carry on there |
 | `!! No working Python 3 here`, or `python` opens the Microsoft Store | Python not installed, or only Windows' Store shortcut | ask me once, install it yourself (`winget install -e --id Python.Python.3.12 --accept-source-agreements --accept-package-agreements`), then the same command again in Git Bash |
 | `CERTIFICATE_VERIFY_FAILED` (macOS) | python.org's Python has no CA certificates | `optimize/setup.sh` again: it installs certifi into `optimize/venv` and every script uses it; if the line stays, delete `optimize/venv` first |
 | `symbol _ERR_get_error_all`, or a cryptography `DLL`/`dlopen` error (macOS) | an old system Python (3.9) was used, and the cryptography wheel won't load on it | `brew install python@3.12`, delete `optimize/venv`, then `optimize/setup.sh` |
@@ -178,10 +183,13 @@ Lines starting with `!!` are the scripts telling you to stop and act. These are 
 | `Refusing: these are in …keep.txt` | a protected package got into `mine.txt` | take that line out of `mine.txt`, run again |
 | `!! … has a package rated Unsafe` | `mine.txt` has a package the TV may need | take it out of `mine.txt`, run again |
 | `Unknown package` or `not installed` while disabling | that package is not on this model | nothing, normal |
-| `An older … signed with another key is installed` | an older build of our app | nothing, it reinstalls; redo step 4 for that app |
+| `!! … is signed with a different key than this APK. Refusing` | the app on the TV was not built with my repo's key | **stop**, show me; never set `ALLOW_REPLACE=1` yourself |
+| `!! … does not match its SHA-256` or `no SHA256SUMS.txt entry` | the download is broken or not the file that was built/pinned | the same command once (a broken download); if again, **stop** and show me |
+| `!! optimize/lists/extras.lock is missing` | TV Bro and SmartTube were never pinned | `optimize/pin-extras.sh`, show me what it pinned, then `optimize/run.sh` |
 | `!! Install of … failed` | usually storage, or a very old Android | stop and show me |
-| `!! Could not download …` (install.sh) | no such build at that tag, or no internet on this computer | check `APK_TAG` (unset = the latest) and the releases page https://github.com/tshi-dev/UrTV/releases, and that the computer is online; then the same command |
-| `!! GitHub rate limit, try later` (install.sh extras) | GitHub allows only a few anonymous requests an hour | wait a few minutes, then `optimize/run.sh` again (it redoes the extras step) |
+| `!! Could not download …` (install.sh) | no such build at that tag, or no internet on this computer | check `APK_TAG` (unset = the latest) and the releases page https://github.com/SultanBajaifer/UrTV/releases, and that the computer is online; then the same command |
+| `!! GitHub rate limit` / `HTTP Error 403` (pin-extras.sh) | GitHub allows only a few anonymous requests an hour | wait a few minutes, then the same command |
+| a step went wrong and I want it undone | | `optimize/rollback.sh diff` (show me), then `optimize/rollback.sh last` |
 | `Done, with problems:` and `optimize/run.sh` exits 1 | every step ran, but `report.md` has `!!` lines (printed under it) | read them, fix what each says (this table), then `optimize/run.sh` again: only the report step is redone |
 | `ADB dropped during the switch; the TV is back, trying the switch again` | Wi-Fi ADB dropped while the home was being switched; the script waited for the TV (up to 6 minutes) and is doing the switch a second time, the safety switch armed again | nothing, wait; only if it ends in `!!` follow that line |
 | `!! The safety switch put the stock home back` | ADB was slower than the 5-minute switch | nothing is broken: the same command again |
@@ -224,11 +232,16 @@ out, tell me again and run it once more.
 
 ## 2. Before you run it: how to undo
 
-Before you start step 3, tell me in plain Arabic how to undo everything, so I know it is safe: one command,
-`optimize/reset.sh`, run from this folder (say the folder's full path), puts the TV back as it came (the
-disabled apps back on, the TV's own home screen and screensaver back, our two apps removed, TV Bro and
-SmartTube removed if the setup installed them, the speed tweaks back to Android's defaults); my photos, accounts and other apps are not touched. Any agent on this computer can
-run it for me later.
+Before you start step 3, tell me in plain Arabic how to undo, so I know it is safe (say the folder's full path):
+- `optimize/rollback.sh last` undoes the last step only (the TV's state is saved before each step);
+  `optimize/rollback.sh show` lists what can be undone, `optimize/rollback.sh to <step>` goes back further;
+- `optimize/rollback.sh tweaks` undoes only the speed tweaks, `optimize/rollback.sh enable <app>` turns one app back
+  on, `optimize/rollback.sh app <our app>` goes back to its previous version;
+- `optimize/reset.sh` puts the TV back as it came (the disabled apps back on, the TV's own home screen and
+  screensaver back, our two apps removed, TV Bro and SmartTube removed if the setup installed them, the speed
+  tweaks back to Android's defaults).
+My photos, accounts and other apps are never touched. All of these need ADB on (after step 8: Developer options →
+USB debugging on, `optimize/find-tv.sh`, Allow on the TV).
 
 ## 3. Run it (20–30 minutes, the TV restarts twice)
 
@@ -236,10 +249,11 @@ run it for me later.
 optimize/run.sh
 ```
 It saves the TV's state, measures memory and the TV's own screensaver, disables telemetry/ads/demos and my picks,
-applies the speed and memory tweaks, installs the screensaver and the home screen (behind the safety switch) and
-TV Bro and SmartTube (from their own GitHub releases, the build for this TV's processor),
-measures again and writes `optimize/run/report.md`. If it stops for any reason: `optimize/run.sh` again (it
-continues), and `optimize/run.sh status` shows where it is.
+applies the speed and memory tweaks, installs the screensaver and the home screen (behind the safety switch,
+checked against the release's SHA-256) and TV Bro and SmartTube (only the pinned files, SHA-256 checked),
+measures again and writes `optimize/run/report.md`. Before each step that changes the TV it saves the TV's state
+(`optimize/run/snap-<step>.txt`). If it stops for any reason: `optimize/run.sh` again (it continues), and
+`optimize/run.sh status` shows where it is. If I want a step undone: `optimize/rollback.sh last`.
 
 If the home-screen step says Home did not switch, leave the TV alone for 5 minutes (the stock home comes back by
 itself) and tell me. Some TCL firmware keeps its own home: then `SKIP_LAUNCHER=1 optimize/run.sh`.
@@ -301,28 +315,22 @@ optimize/run.sh status                            # every step ✓, and «report
   you if either doesn't work (`optimize/keep.sh` turns them back on).
 - In one line, what I can still ask you to change any time: the favourites, the card on the home screen, the
   screensaver delay, and the optional TCL extras (the TCL tab and channels, game bar, T-Cast…).
-- How to undo, again: the folder's full path and the exact command to paste there
-  (`optimize/reset.sh`; on Windows in Git Bash), what it brings back, and that if I ever want it, I can open an
-  agent on this computer and say «رجّع التلفزيون مثل ما كان: شغّل optimize/reset.sh في مجلد UrTV».
+- How to undo, again: the folder's full path and the exact commands to paste there (`optimize/rollback.sh show`,
+  `optimize/rollback.sh last`, `optimize/reset.sh`; on Windows in Git Bash), what they bring back, and that if I
+  ever want it, I can open an agent on this computer and say «رجّع التلفزيون مثل ما كان: شغّل optimize/reset.sh في مجلد UrTV».
 
-## 8. Ask me to share how it went (the very last thing)
+## 8. Second copy of the backups, then close ADB (the very last thing)
 
-Only after everything above, undo included, and nowhere earlier: your last message, on its own, word for word:
+Ask me, word for word, and wait:
 
-> آخر شي: تبغى ترسل لصاحب المشروع ملخص كيف مشى التركيب؟ يساعده يحسّنه للناس. فيه بس نوع التلفزيون ونسخة
-> أندرويد، وكم أخذت كل خطوة ووش اللي تعطّل، والذاكرة قبل وبعد. ما فيه أي شي شخصي: لا مدينة ولا أندية ولا
-> تطبيقات ولا عناوين. وإذا عندك كلمة تبغى توصله (عجبك؟ شي ضايقك؟)، اكتبها مع ردك.
+> آخر خطوتين للأمان:
+> ١) وين أحفظ نسخة ثانية من ملفات الاسترجاع؟ (فلاش USB أو مجلد متزامن مع السحابة) عشان لو ضاع هالمجلد تقدر ترجّع التلفزيون.
+> ٢) أطفّي ADB على التلفزيون وأمسح مفتاح هالكمبيوتر؟ بعدها ما أحد على شبكتك يقدر يتحكم بالتلفزيون. ولو احتجت ترجّع أو تحدّث، تشغّل «USB debugging» من خيارات المطوّر وتضغط Allow.
 
-If I say yes, run it with: your name and model as the agent; my words if I wrote any (as I wrote them, minus
-anything personal); and your own notes: what failed or was slow, how long it cost and what fixed it, in two to five
-plain lines, with no names, addresses or paths:
 ```
-optimize/share.sh --agent "<you and your model>" --owner "<my words, or leave it out>" "<your notes>"
+optimize/backup-copy.sh <the folder I named>      # only if I gave one
+optimize/lockdown.sh                              # only if I said yes; the last command: the TV stops answering
 ```
-This is the one command here that needs quotes: the agent name and the notes are several words (no apostrophes
-in them). On Windows, inside the Git Bash `-lc "…"` string use single quotes for each:
-`-lc "cd <this folder> && optimize/share.sh --agent '<you and your model>' --owner '<my words>' '<your notes>'"`.
-It sends the summary to the author by itself (anonymously, no account) and prints `Sent to the author`: show me the
-text and tell me it went. If it couldn't send it, it opens a QR code on this computer's screen instead
-(`optimize/run/share-qr.png`; if it didn't open, open it for me): tell me to scan it with my phone's camera, and the
-page that opens has a button that sends it. Never run it if I say no.
+After `lockdown.sh`, tell me to do the one step it can't do itself, on the TV: Settings → System → Developer
+options → «Revoke USB debugging authorizations». If I said no to the lockdown, tell me that ADB stays on and that
+`optimize/lockdown.sh` closes it whenever I want.
