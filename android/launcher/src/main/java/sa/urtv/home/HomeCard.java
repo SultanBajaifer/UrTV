@@ -23,7 +23,7 @@ import java.util.Collections;
  */
 final class HomeCard {
     private static final Uri CONFIG = Uri.parse("content://sa.urtv.screensaver.config");
-    private static final String FONTS = "https://raw.githubusercontent.com/tshi-dev/UrTV/master/assets/fonts/";
+    private static final String FONTS = "https://raw.githubusercontent.com/SultanBajaifer/UrTV/master/assets/fonts/";
 
     private final Activity activity;
     private final ViewGroup parent;
@@ -97,7 +97,12 @@ final class HomeCard {
                         } catch (java.io.IOException ignored) { }
                     }
                 }
-                return super.shouldInterceptRequest(v, r);
+                return NetPolicy.allowed(r.getUrl()) ? super.shouldInterceptRequest(v, r) : NetPolicy.blocked();
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
+                return true;   // the card never navigates away
             }
         });
         WebSettings s = web.getSettings();

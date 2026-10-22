@@ -5,8 +5,7 @@
     <uses-permission android:name="android.permission.INTERNET" />   <!-- hosted wallpapers, the optional card -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Android 11 only reveals the Wi-Fi name to apps holding location; granted over ADB at install. -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- No location permission: Android 11+ then hides the Wi-Fi name, so the Wi-Fi tile shows only "connected". -->
     <!-- the optional home-screen card reads the screensaver's settings (signature permission, same key) -->
     <uses-permission android:name="sa.urtv.screensaver.READ_CONFIG" />
 

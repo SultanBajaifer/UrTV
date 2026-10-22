@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -12,20 +13,37 @@ import java.net.URL;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Pulls the latest page from GitHub so screen changes reach the TV without a new APK. */
+/**
+ * Pulls the latest page from GitHub so screen changes reach the TV without a new APK. The page is only used when
+ * dist/tv.html.sig verifies against the owner's public key built into the app (PageKey): a push to the repo alone,
+ * by anyone, can't change what runs on the TV.
+ */
 final class Updater {
     static final String URL_PAGE =
         PhotoCache.REPO + "dist/tv.html";
+    static final String URL_SIG = URL_PAGE + ".sig";
     static final long INTERVAL_MS = 6L * 3600 * 1000;
 
     private static final String OFF = "التحديث التلقائي متوقف";
     private static final String RECENT = "تم الفحص مؤخراً";
-    private static final String LATEST_URL = "https://github.com/tshi-dev/UrTV/releases/latest";
+    private static final String LATEST_URL = "https://github.com/SultanBajaifer/UrTV/releases/latest";
     private static final Pattern TAG = Pattern.compile("v(\\d+\\.\\d+)$");
 
     private Updater() {}
 
     static File pageFile(Context c) { return new File(c.getFilesDir(), "web/tv.html"); }
+    static File sigFile(Context c) { return new File(c.getFilesDir(), "web/tv.html.sig"); }
+
+    /** The downloaded page, only if its saved signature still verifies (an unsigned page from before is ignored). */
+    static boolean pageTrusted(Context c) {
+        File page = pageFile(c), sig = sigFile(c);
+        if (!page.isFile() || !sig.isFile()) return false;
+        try {
+            return PageKey.verify(readAll(new FileInputStream(page)), readAll(new FileInputStream(sig)));
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
     /** Blocking; call off the main thread. Returns an Arabic status line for the settings screen. */
     static synchronized String check(Context c, boolean force) {
@@ -49,7 +67,7 @@ final class Updater {
             con.setConnectTimeout(15000);
             con.setReadTimeout(30000);
             String etag = sp.getString("etag", null);
-            if (etag != null && out.isFile()) con.setRequestProperty("If-None-Match", etag);
+            if (etag != null && pageTrusted(c)) con.setRequestProperty("If-None-Match", etag);
             int code = con.getResponseCode();
             sp.edit().putLong("lastCheck", now).apply();
             if (code == HttpURLConnection.HTTP_NOT_MODIFIED) return "الصفحة محدثة";
@@ -60,14 +78,21 @@ final class Updater {
             String tail = new String(body, Math.max(0, body.length - 4096), Math.min(body.length, 4096), "UTF-8");
             // never swap in a truncated or wrong file
             if (body.length < 30_000 || !head.contains("<html") || !tail.contains("</html>")) return "ملف التحديث غير صالح";
+            String newTag = con.getHeaderField("ETag");
+
+            // the signature next to it: no etag is saved on a refusal, so the next check fetches both again
+            // (GitHub's cache can serve the new page with the old signature for a few minutes)
+            byte[] sig = fetch(URL_SIG, 4096);
+            if (sig == null || !PageKey.verify(body, sig)) return "تم رفض التحديث: توقيع غير صالح";
 
             File dir = out.getParentFile();
             if (!dir.isDirectory() && !dir.mkdirs()) return "تعذر الحفظ";
-            File tmp = new File(dir, "page.tmp");
-            FileOutputStream fo = new FileOutputStream(tmp);
-            try { fo.write(body); } finally { fo.close(); }
-            if (!tmp.renameTo(out)) return "تعذر الحفظ";
-            sp.edit().putString("etag", con.getHeaderField("ETag")).apply();
+            File tmp = new File(dir, "page.tmp"), tmpSig = new File(dir, "sig.tmp");
+            write(tmp, body);
+            write(tmpSig, sig);
+            // the signature first: a page without a matching one is never used (pageTrusted)
+            if (!tmpSig.renameTo(sigFile(c)) || !tmp.renameTo(out)) return "تعذر الحفظ";
+            sp.edit().putString("etag", newTag).apply();
             return "تم التحديث";
         } catch (Exception e) {
             return "لا يوجد اتصال";
@@ -126,6 +151,28 @@ final class Updater {
         if (minor(latest) <= minor(mine)) return head + "، وهو الأحدث.";
         return head + ". يوجد إصدار جديد " + arabic(latest)
             + ": اطلب من مساعدك «حدّث تلفزيوني»، وإعداداتك تبقى.";
+    }
+
+    /** A small file (the signature), or null on any failure. */
+    private static byte[] fetch(String url, int max) {
+        HttpURLConnection con = null;
+        try {
+            con = (HttpURLConnection) new URL(url).openConnection();
+            con.setConnectTimeout(15000);
+            con.setReadTimeout(30000);
+            if (con.getResponseCode() != HttpURLConnection.HTTP_OK) return null;
+            byte[] b = readAll(con.getInputStream());
+            return b.length > max ? null : b;
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (con != null) con.disconnect();
+        }
+    }
+
+    private static void write(File f, byte[] b) throws java.io.IOException {
+        FileOutputStream fo = new FileOutputStream(f);
+        try { fo.write(b); } finally { fo.close(); }
     }
 
     private static byte[] readAll(InputStream in) throws java.io.IOException {

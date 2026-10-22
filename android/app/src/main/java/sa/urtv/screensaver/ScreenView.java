@@ -26,7 +26,13 @@ final class ScreenView {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) {
                 WebResourceResponse res = PhotoCache.serve(c, r.getUrl().toString());
-                return res != null ? res : super.shouldInterceptRequest(v, r);
+                if (res != null) return res;
+                return NetPolicy.allowed(r.getUrl()) ? super.shouldInterceptRequest(v, r) : NetPolicy.blocked();
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
+                return true;   // the page never navigates away
             }
         });
         WebSettings s = w.getSettings();

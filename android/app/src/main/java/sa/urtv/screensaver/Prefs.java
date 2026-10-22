@@ -154,7 +154,7 @@ final class Prefs {
         long installed = 0;
         try { installed = c.getPackageManager().getPackageInfo(c.getPackageName(), 0).lastUpdateTime; }
         catch (Exception ignored) { }
-        String base = autoUpdate() && remote.isFile() && remote.lastModified() > installed
+        String base = autoUpdate() && remote.lastModified() > installed && Updater.pageTrusted(c)
             ? Uri.fromFile(remote).toString()
             : "file:///android_asset/tv.html";
         return base + "#" + fragment();
