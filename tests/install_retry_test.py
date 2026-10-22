@@ -34,7 +34,8 @@ case "$1" in
 esac
 case "$1" in
   *launcherx*) echo "package:com.google.android.apps.tv.launcherx" ;;
-  "pm install"*) echo Success ;;
+  "pm install"*) echo "${INSTALL_OUT:-Success}" ;;
+  "pm uninstall"*) log uninstall ;;
   "getprop ro.serialno")
     n=$(( $(cat "$T/polls" 2>/dev/null || echo 0) + 1 )); echo $n > "$T/polls"
     [ "$n" -le "$DOWN_POLLS" ] && exit 1
@@ -46,19 +47,23 @@ esac
 exit 0
 '''
 
-def run(name, fail_switches, first_drop, down_polls=0):
+EMPTY = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"   # SHA-256 of the stub's empty APK
+
+def run(name, fail_switches, first_drop, down_polls=0, what="launcher", **extra):
     t = Path(tempfile.mkdtemp())
     tree, bin_ = t / "tree", t / "bin"
     (tree / "optimize" / "lists").mkdir(parents=True); bin_.mkdir()
     shutil.copy(ROOT / "optimize" / "install.sh", tree / "optimize")
     shutil.copy(ROOT / "optimize" / "deadman.sh", tree / "optimize")
     (tree / "optimize" / "lists" / "home-replaced.txt").write_text("# none\n")
-    for f, body in (("py", STUB_PY), ("curl", '#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" = -o ] && : > "$2"; shift; done\n'),
+    for f, body in (("py", STUB_PY), ("curl", '#!/bin/sh\n'   # an empty APK, and the release's SHA256SUMS.txt that lists it
+                     'case "$*" in *SHA256SUMS.txt*) printf "%s  urtv-home.apk\\n%s  urtv-screensaver.apk\\n" "${SUM:-$EMPTY}" "${SUM:-$EMPTY}"; exit 0 ;; esac\n'
+                     'while [ $# -gt 0 ]; do [ "$1" = -o ] && : > "$2"; shift; done\n'),
                     ("sleep", "#!/bin/sh\nexit 0\n")):
         (bin_ / f).write_text(body); (bin_ / f).chmod(0o755)
     env = dict(os.environ, PATH=f"{bin_}:{os.environ['PATH']}", PY=str(bin_ / "py"), T=str(t),
-               FAIL_SWITCHES=str(fail_switches), FIRST_DROP=first_drop, DOWN_POLLS=str(down_polls))
-    r = subprocess.run(["bash", str(tree / "optimize" / "install.sh"), "launcher"], env=env, capture_output=True, text=True)
+               FAIL_SWITCHES=str(fail_switches), FIRST_DROP=first_drop, DOWN_POLLS=str(down_polls), EMPTY=EMPTY, **extra)
+    r = subprocess.run(["bash", str(tree / "optimize" / "install.sh"), what], env=env, capture_output=True, text=True)
     log = (t / "log").read_text().split() if (t / "log").exists() else []
     shutil.rmtree(t)
     return r.returncode, r.stdout + r.stderr, log
@@ -75,8 +80,18 @@ cases = [
      lambda c, o, l: c == 1 and l.count("arm") == 2 and "!! The safety switch put the stock home back" in o),
     ("TV never answers: exits 1", run("e", 1, "stock", down_polls=99),
      lambda c, o, l: c == 1 and "did not come back within 6 minutes" in o and l.count("arm") == 1),
+    # checksums and signing keys: a swapped or broken APK never reaches the TV, nothing is removed to make room
+    ("saver: SHA-256 mismatch refuses", run("f", 0, "", what="saver", SUM="0" * 64),
+     lambda c, o, l: c == 1 and "does not match its SHA-256" in o and "uninstall" not in l),
+    ("saver: other signing key refuses, removes nothing",
+     run("g", 0, "", what="saver", INSTALL_OUT="Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: signatures do not match]"),
+     lambda c, o, l: c == 1 and "Refusing" in o and "uninstall" not in l),
+    ("saver: other signing key with ALLOW_REPLACE=1 replaces",
+     run("h", 0, "", what="saver", ALLOW_REPLACE="1",
+         INSTALL_OUT="Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: signatures do not match]"),
+     lambda c, o, l: "uninstall" in l),
 ]
 bad = [n for n, (c, o, l), ok in cases if not ok(c, o, l)]
 for n, (c, o, l), ok in cases:
-    print(f"install.sh launcher: {n}: " + ("ok" if ok(c, o, l) else f"WRONG (exit {c}, log {l})\n{o}"))
+    print(f"install.sh: {n}: " + ("ok" if ok(c, o, l) else f"WRONG (exit {c}, log {l})\n{o}"))
 sys.exit(1 if bad else 0)

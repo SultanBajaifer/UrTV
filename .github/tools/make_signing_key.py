@@ -14,7 +14,7 @@ Actions → New repository secret, twice:
   ANDROID_KEYSTORE_B64       the long text it prints
   ANDROID_KEYSTORE_PASSWORD  the password it prints
 The builds sign with it from then on (CI refuses to build without it). TVs that have apps signed with another
-key need them installed again once (optimize/install.sh does that by itself; their settings start over).
+key need them installed again once: ALLOW_REPLACE=1 optimize/install.sh all (their settings start over).
 """
 import base64
 import datetime
@@ -31,7 +31,7 @@ from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509.oid import NameOID
 
 ALIAS = b"urtv"   # android/*/build.gradle signs with this alias
-REPO = "tshi-dev/UrTV"
+REPO = "SultanBajaifer/UrTV"
 
 
 def make(password):
