@@ -14,7 +14,7 @@ Logs on failure: `adb logcat -d -t 300 | grep -iE "urtv|chromium|AndroidRuntime"
 |---|---|---|
 | S1 | On the TV: Settings → Device preferences → About → press Build 7× → Developer options → enable **USB/Network debugging**. Note the TV's IP. | Debugging on |
 | S2 | `adb connect <TV_IP>:5555` then `adb devices` | Device listed as `device` |
-| S3 | `curl -L -o urtv-screensaver.apk https://github.com/tshi-dev/UrTV/releases/download/apk-latest/urtv-screensaver.apk` | ~2–5 MB file. To test the `next` branch, use the tag `apk-next` in the URL instead of `apk-latest` (with the scripts: `APK_TAG=apk-next optimize/install.sh saver`) |
+| S3 | `curl -L -o urtv-screensaver.apk https://github.com/SultanBajaifer/UrTV/releases/download/apk-latest/urtv-screensaver.apk` | ~2–5 MB file. To test the `next` branch, use the tag `apk-next` in the URL instead of `apk-latest` (with the scripts: `APK_TAG=apk-next optimize/install.sh saver`) |
 | S4 | `adb uninstall sa.yourtv.screensaver` and `adb uninstall com.abdullah.tvsaver` (ignore "not installed") | The pre-rename app is gone (it would show twice) |
 | S5 | `adb install urtv-screensaver.apk` | `Success` |
 | S6 | `adb shell dumpsys package sa.urtv.screensaver \| grep versionName` | `versionName=3.<number>` |
@@ -120,7 +120,7 @@ Use the TV's clock or wait for the real moment; take a screenshot at each.
 
 | ID | Action | Expected |
 |---|---|---|
-| H1 | On a computer open `https://raw.githack.com/tshi-dev/UrTV/master/dist/urtv.html` or download `dist/urtv.html` and double-click | Same screen in the browser; `F` toggles full screen |
+| H1 | On a computer open `https://raw.githack.com/SultanBajaifer/UrTV/master/dist/urtv.html` or download `dist/urtv.html` and double-click | Same screen in the browser; `F` toggles full screen |
 | H2 | Add `#city=جدة&lat=21.5433&lon=39.1728&teams=136013` to the URL | Jeddah times; only one match slot |
 | H3 | Resize the window to 1280×720 | Layout holds, nothing overlaps |
 
@@ -147,7 +147,6 @@ Use the TV's clock or wait for the real moment; take a screenshot at each.
 | T1 | `optimize/dock.sh hidden` | One `package \| reason` line per app the home screen leaves out, or «nothing left out» |
 | T2 | `optimize/dock.sh hide <pkg of an app in the grid>`, look at the home screen, then `optimize/dock.sh show <pkg>` | `hidden: <pkg>` and the app leaves the grid; `shown: <pkg>` and it is back |
 | T3 | `optimize/check-home.sh` | «OK: Home opens تلفزيونك»; if no app can be opened: a `!!` line and exit 1 |
-| T4 | `optimize/share.sh --agent "tester" "test note"` | «Sent to the author», or a QR code opens; `optimize/run/share.md` holds no IP address and no user folder (`grep` for the TV's IP and your user name prints nothing) |
 | T5 | `optimize/saver.sh find-team الأهلي` | The Saudi club first, then «الأهلي المصري»; each line `id:Name \| league` |
 | T6 | `optimize/saver.sh minrating 7`, then `optimize/saver.sh show` | `saved`; `show` lists `minrating: 7` |
 | T7 | `optimize/selftest.sh` | `OK upload`, `OK Arabic`, then the screensaver and the app counts; no `FAILED` |
