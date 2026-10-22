@@ -22,13 +22,13 @@
 |---|---|
 | مجاني بحساب ChatGPT | يحتاج اشتراك Claude Pro (20$ بالشهر) |
 | حمّل تطبيق Codex | حمّل تطبيق Claude ← تبويب **Code** |
-| الموافقات: اختر **«Approve for me»** | الموافقات: **Allow** للمهمة كلها |
+| الموافقات: **اسألني كل مرة** (لا تختار «Approve for me») | الموافقات: وافق على **كل أمر لحاله** (لا تختار Allow للمهمة كلها) |
 
 <sub>ويندوز: ركّب Git وPython أول (`winget install Git.Git Python.Python.3.12`). Gemini CLI مجاني وناس قالوا يشتغل؛ ما جرّبناه.</sub>
 
 ### ③ الصق هذا
 
-> ركّب تلفزيوني من https://github.com/tshi-dev/UrTV: انسخ المستودع واتبع `docs/SETUP-PROMPT.md` خطوة بخطوة. أنت على كمبيوتر متصل بنفس شبكة الواي فاي حقت التلفزيون.
+> ركّب تلفزيوني من https://github.com/SultanBajaifer/UrTV: انسخ المستودع واتبع `docs/SETUP-PROMPT.md` خطوة بخطوة. أنت على كمبيوتر متصل بنفس شبكة الواي فاي حقت التلفزيون.
 
 #### وش يصير بعد اللصق؟
 يسألك عن **مدينتك** و**أنديتك**، والتلفزيون يسألك **Allow** مرة وحدة، وبعدها خلّه يشتغل: 40 دقيقة وكم إعادة تشغيل.
@@ -58,13 +58,13 @@ Settings → About → press OK on **Build** 7 times. Then go to **Developer opt
 |---|---|
 | Free with a ChatGPT account | Needs Claude Pro ($20/month) |
 | Download the Codex app | Download the Claude app → **Code** tab |
-| Approvals: choose **«Approve for me»** | Approvals: **Allow** for the whole task |
+| Approvals: **ask every time** (not «Approve for me») | Approvals: approve **each command** (not "Allow for the whole task") |
 
 <sub>Windows: install Git and Python first (`winget install Git.Git Python.Python.3.12`). Gemini CLI is free and reported to work; not tested by us.</sub>
 
 ### ③ Paste this
 
-> Set up my TV with https://github.com/tshi-dev/UrTV: clone it and follow `docs/SETUP-PROMPT.md` step by step. You are on a computer on the same Wi-Fi as the TV.
+> Set up my TV with https://github.com/SultanBajaifer/UrTV: clone it and follow `docs/SETUP-PROMPT.md` step by step. You are on a computer on the same Wi-Fi as the TV.
 
 #### What happens after pasting?
 It asks your **city** and your **clubs**, the TV asks **Allow** once, then leave it: 40 minutes, a few restarts.
@@ -83,7 +83,7 @@ Redo the whole setup with one command, settings kept.
 
 **Safe:** nothing is uninstalled; AirPlay, Chromecast and voice are never touched; a 5-minute safety switch puts the
 stock home back if ours doesn't come up. The apps are built and signed by GitHub Actions from this repo (version
-3.N = the build number). The full prompt: [docs/SETUP-PROMPT.md](docs/SETUP-PROMPT.md). To build a different
+3.N = the build number). See [Security](#security) for what this fork adds. The full prompt: [docs/SETUP-PROMPT.md](docs/SETUP-PROMPT.md). To build a different
 screen: [docs/RECREATE-PROMPT.md](docs/RECREATE-PROMPT.md).
 
 ## What you get
@@ -92,10 +92,10 @@ screen: [docs/RECREATE-PROMPT.md](docs/RECREATE-PROMPT.md).
 |---|---|---|
 | **شاشة تلفزيونك** · screensaver | Clock, Hijri date, prayer times and iqama, Ramadan, your teams' matches, weather, markets, and beside the clock your choice of new episodes, today's prayers, the 5-day forecast, all your teams' games, or a verse/hadith of the day, over Saudi landscapes | `urtv-screensaver.apk` |
 | **تلفزيونك** · home screen | Clean Arabic launcher: favourites row (5–10 apps) arranged in «ترتيب المفضلة», all apps, inputs, Wi-Fi, settings; optional card from the screensaver (off by default) | `urtv-home.apk` |
-| **Two free apps** | [TV Bro](https://github.com/truefedex/tv-bro), a web browser for the TV, and [SmartTube](https://github.com/yuliskov/SmartTube), YouTube without ads, from their own releases (skip with `SKIP_EXTRAS=1`) | `optimize/install.sh extras` |
+| **Two free apps** | [TV Bro](https://github.com/truefedex/tv-bro), a web browser for the TV, and [SmartTube](https://github.com/yuliskov/SmartTube), YouTube without ads: only the versions pinned in `optimize/lists/extras.lock` (`optimize/pin-extras.sh`), SHA-256 checked (skip with `SKIP_EXTRAS=1`) | `optimize/install.sh extras` |
 | **Speed-up** | Telemetry, ads and demos off (reversibly), closed apps frozen, Play Store kept from running in the background, faster animations | `optimize/` |
 
-**Download the apps yourself:** [releases/apk-latest](https://github.com/tshi-dev/UrTV/releases/tag/apk-latest)
+**Download the apps yourself:** [releases/apk-latest](https://github.com/SultanBajaifer/UrTV/releases/tag/apk-latest)
 (install with `adb install`; the agent route above also sets everything up).
 Every build is also kept as a numbered release (`v3.N`, the apps' version), to go back to one:
 `APK_TAG=v3.N optimize/install.sh all`.
@@ -113,8 +113,12 @@ Everything is scriptable over ADB, made for slow Wi-Fi (retries, resumable uploa
 | `optimize/measure.sh` · `shot.sh` | memory before/after (restart + settle) · screenshots without navigating |
 | `optimize/keep.sh` | turn back on anything protected (AirPlay, casting, voice, updates…) that something turned off |
 | `docs/TVS.md` | what was seen on each TV model (ADB port, home switch, what to watch out for) |
+| `optimize/rollback.sh` | undo one step (`last`, `to <step>`, `show`, `diff`), only the tweaks, one app back on, or our app's previous version |
 | `optimize/reset.sh` | back to stock: lists re-enabled, stock home and screensaver back, our apps removed |
-| `optimize/share.sh` | if the owner wants: how the setup went (TV model, time per step, what failed, memory before/after; nothing personal), sent anonymously to the author (from their phone by a QR code if this computer is offline) |
+| `optimize/backup-copy.sh` | a second copy of what undo needs (USB stick, cloud folder) |
+| `optimize/lockdown.sh` | the last step: ADB off on the TV, this computer's ADB key deleted |
+| `optimize/sign-page.sh` | sign the screen page (`keygen` once, then `sign` after each change) so the TV accepts it |
+| `optimize/pin-extras.sh` | pin TV Bro and SmartTube to exact files and SHA-256s |
 
 What we learned on real TCL sets, and what must stay on: [docs/OPTIMIZE.md](docs/OPTIMIZE.md). Manual test plan:
 [docs/TEST-PLAN.md](docs/TEST-PLAN.md).
@@ -158,8 +162,34 @@ countdowns still work and the last good data stays on screen. A finished game's 
 (`.github/tools/fetch_verses.py`); each hadith is checked by CI (`.github/tools/verify_hadith.py`) against the
 Arabic text of the six Sunni books, and only those found are shown, with the books as the source line.
 
-**The Android apps** update the screen page from this repo every 6 hours (so it must stay public), start fast
-(the page shows once the clock, saved panels and photo are ready), and come back after a power cut.
+**The Android apps** update the screen page from this repo every 6 hours (so it must stay public), but only a page
+whose `dist/tv.html.sig` verifies against the public key built into the app; start fast (the page shows once the
+clock, saved panels and photo are ready), and come back after a power cut.
+
+## Security
+
+This fork of [tshi-dev/UrTV](https://github.com/tshi-dev/UrTV) is hardened for one household:
+
+- **Signed page updates.** The screensaver downloads `dist/tv.html` only together with `dist/tv.html.sig`, an
+  ECDSA P-256 signature made with a key that lives only on the owner's computer (`~/.urtv/page-signing.pem`, from
+  `optimize/sign-page.sh keygen`). A push to this repo, by anyone, can't change what runs on the TV until the owner
+  signs it. No key or a bad signature: the TV keeps the page it has (or the one built into the app).
+  After changing `src/template.html`: `python3 src/build.py`, review, `optimize/sign-page.sh sign`, commit both.
+- **The screen only reaches its data APIs.** Both WebViews refuse any other host (the page's CORS-proxy fallbacks
+  for plain browsers included) and never navigate.
+- **Checked installs.** Our APKs must match the release's `SHA256SUMS.txt`; TV Bro and SmartTube must match the
+  pinned SHA-256 in `optimize/lists/extras.lock`. An app on the TV signed with another key is never replaced unless
+  `ALLOW_REPLACE=1`.
+- **No location permission** for the home screen (the Wi-Fi tile shows only "connected"), and **no report** sent
+  anywhere.
+- **ADB closed at the end** (`optimize/lockdown.sh`), and per-step rollback (`optimize/rollback.sh`) for when it's
+  back on.
+- **Nothing private in the repo:** CI and `tests/check.py` fail on a committed key, ADB key, backup or run folder.
+
+**Owner's one-time setup:** make the APK signing key (`python3 .github/tools/make_signing_key.py`, it puts it in the
+repo's secrets), make the page key (`optimize/setup.sh && optimize/sign-page.sh keygen`), commit
+`android/app/page-key.pub`, then `python3 src/build.py && optimize/sign-page.sh sign` and commit `dist/`. Keep a
+backup of `~/.urtv/page-signing.pem` somewhere safe.
 
 ## Credits
 

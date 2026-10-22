@@ -13,6 +13,8 @@ if [ ! -e venv/bin/python ] && [ -e venv/Scripts/python.exe ]; then
   printf '#!/usr/bin/env bash\nexec "$(dirname "$0")/../Scripts/python.exe" "$@"\n' > venv/bin/python
   chmod +x venv/bin/python
 fi
+# the repo's pre-commit hook: keys, the ADB key and backups never get committed by mistake
+git -C .. config core.hooksPath .githooks 2> /dev/null || true
 if ! venv/bin/python -m pip install -q --no-cache-dir -r requirements.txt; then
   echo "!! Couldn't install the Python packages into optimize/venv (pip's error is above). If it is a network"
   echo "   error, allow this terminal network access (pypi.org), then run optimize/setup.sh again."
@@ -29,7 +31,7 @@ if ! err=$(venv/bin/python -c "import adb_shell.adb_device, adb_shell.auth.keyge
   echo "$err" | tail -1
   if grep -qi "too long" <<< "$err"; then
     echo "!! This folder's path is too long for Windows (over 260 characters inside optimize/venv). Clone UrTV into"
-    echo "   a short folder, such as C:\UrTV: git clone -c core.longpaths=true https://github.com/tshi-dev/UrTV C:/UrTV"
+    echo "   a short folder, such as C:\UrTV: git clone -c core.longpaths=true https://github.com/SultanBajaifer/UrTV C:/UrTV"
   else
     echo "!! The ADB package doesn't load from optimize/venv. Delete the folder optimize/venv, then run"
     echo "   optimize/setup.sh again."

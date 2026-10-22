@@ -213,6 +213,22 @@ for f in texts:
         found.append(f"{f.relative_to(ROOT)}: tailscale")
 check("no private IPs, keys or network names", not found, found[:10])
 
+# ---- nothing that controls the TV or undoes the setup: keys, ADB keys, backups, run folders (.githooks/pre-commit too)
+PRIVATE = re.compile(r"(^|/)(adbkey(/|$|\.pub$)|\.tv_host$|backup-[^/]*\.txt$|run(-[^/]*)?/|apks/|venv/)"
+                     r"|\.(pem|key|p12|jks|keystore)$|^optimize/lists/mine\.txt$")
+private = [str(f.relative_to(ROOT)) for f in tracked() if PRIVATE.search(str(f.relative_to(ROOT)).replace("\\", "/"))]
+check("no keys, ADB keys, backups or run folders committed", not private, private)
+private_key = [str(f.relative_to(ROOT)) for f in texts
+               if "PRIVATE KEY-----" in f.read_text(encoding="utf-8", errors="ignore") and f != Path(__file__).resolve()]
+check("no private key inside any file", not private_key, private_key)
+
+# ---- the page the TV downloads is signed with the key the app carries (optimize/sign-page.sh)
+if (ROOT / "android/app/page-key.pub").is_file():
+    r = subprocess.run([sys.executable, "optimize/sign-page.py", "verify"], cwd=ROOT, capture_output=True, text=True)
+    check("dist/tv.html is signed (optimize/sign-page.sh sign)", r.returncode == 0, (r.stdout + r.stderr).strip()[-300:])
+else:
+    print("NOTE no android/app/page-key.pub yet: the TV refuses every downloaded page until optimize/sign-page.sh keygen")
+
 print()
 print(f"{len(failures)} failed" if failures else "all checks passed")
 sys.exit(1 if failures else 0)

@@ -1,5 +1,7 @@
-adb-shell
-rsa
-cryptography
-certifi
-pillow
+# Exact versions: a new release reaches this computer only when someone changes this file on purpose.
+# (Python 3.10-3.13, see optimize/python.sh; pillow 13 needs 3.11, so 12.x.)
+adb-shell==0.4.4
+rsa==4.9.1
+cryptography==50.0.2
+certifi==2026.10.19
+pillow==12.3.0
