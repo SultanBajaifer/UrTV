@@ -93,6 +93,7 @@ something about the screensaver, the home screen or the TV, find it in the table
 | undo everything, back as it came | `optimize/reset.sh` (the TV's own screensaver comes back with its settings) |
 | restart the TV | `optimize/venv/bin/python -I optimize/tv.py --reboot` (never a plain `reboot`) |
 | how much memory is free | `optimize/measure.sh after --now` |
+| the TV feels slow, free the memory now («تسريع», «نظّف الذاكرة») | on the TV: the «تسريع» pill on the home screen (Android 13 and older); from here, any Android: `optimize/boost.sh` (stops the apps left in the background, prints the memory before and after; nothing is uninstalled, disabled or cleared) |
 | a screenshot | `optimize/shot.sh home`, `screensaver`, `settings`, `favourites`, `now <name>` |
 
 ## Not in تلفزيونك yet (say so, and pass it on with `--owner`)

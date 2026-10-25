@@ -417,7 +417,10 @@ public class MainActivity extends Activity {
         tilawah.setOnClickListener(v -> launch(new Intent(this, sa.urtv.home.tilawah.MainActivity.class)));
         sleepPill = pill("مؤقت النوم", R.drawable.ic_sleep);
         sleepPill.setOnClickListener(v -> showSleep(v));
-        List<Pill> row = new ArrayList<>(Arrays.asList(inputs, wifiPill, settings, sleepPill));
+        // «تسريع»: stops the apps left in the background and says how much memory came free (Boost)
+        Pill boost = pill("تسريع", R.drawable.ic_boost);
+        boost.setOnClickListener(v -> Boost.run(this));
+        List<Pill> row = new ArrayList<>(Arrays.asList(inputs, wifiPill, settings, boost, sleepPill));
         if (isInstalled(SAVER_PKG)) { row.add(tasks); row.add(saver); }
         if (getResources().getBoolean(R.bool.show_listening)) row.add(tilawah);
         for (Pill p : row) {

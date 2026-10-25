@@ -1,0 +1,13 @@
+# «تسريع» (BoostText.java). stop: package, launchable, answer, note | result: before MB, after MB, sdk, answer, note | keep: -, -, -, -, note
+stop	com.netflix.ninja	1		1	an app a person opens: may be stopped
+stop	com.tcl.bi	0		0	a background service with no screen: left to Android
+stop	com.google.android.apps.mediashell	1		0	casting: kept even if it had a screen
+stop	com.android.vending	1		0	the Play Store: kept
+stop	sa.urtv.home	1		0	this app: never
+stop	sa.urtv.screensaver	1		0	our screensaver: never
+stop		1		0	no package name
+result	500	620	30	تم التسريع: وفّرنا 120 م.ب بإيقاف التطبيقات اللي بالخلفية. الذاكرة المتاحة الآن 620 م.ب.	Android 11: memory freed
+result	600	590	31	الذاكرة نظيفة: ما فيه تطبيقات بالخلفية تستاهل توقف. الذاكرة المتاحة الآن 590 م.ب.	less free after (another app grew): never a negative number
+result	700	700	33	الذاكرة نظيفة: ما فيه تطبيقات بالخلفية تستاهل توقف. الذاكرة المتاحة الآن 700 م.ب.	Android 13, nothing to free
+result	700	710	34	أندرويد 14 وأحدث ما يسمح لتطبيق يوقف تطبيقات ثانية، والتلفزيون يوقف اللي ما يحتاجه بنفسه. الذاكرة المتاحة الآن 710 م.ب. للتنظيف الكامل: شغّل optimize/boost.sh من الكمبيوتر.	Android 14: honest about the limit
+keep				KEEP	the kept packages

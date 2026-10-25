@@ -26,8 +26,8 @@ check("Pill: a focused pill is its own focus target (focusable, children are not
 check("Pill: only the padding and the name's window change; the pill's own size params (its height) are never touched",
       pill.count("getLayoutParams()") == 2 and "clip.getLayoutParams()" in pill and "name.getLayoutParams()" in pill)
 order = re.findall(r"Arrays\.asList\(([^)]*)\)", main.split("List<Pill> row", 1)[1].split("\n", 1)[0])
-check("MainActivity: the pills are the same seven in the same order (sources, network, settings, sleep, then tasks, screensaver, tilawah)",
-      order == ["inputs, wifiPill, settings, sleepPill"] and "row.add(tasks); row.add(saver);" in main and "row.add(tilawah)" in main, order)
+check("MainActivity: the pills are the same eight in the same order (sources, network, settings, boost, sleep, then tasks, screensaver, tilawah)",
+      order == ["inputs, wifiPill, settings, boost, sleepPill"] and "row.add(tasks); row.add(saver);" in main and "row.add(tilawah)" in main, order)
 check("MainActivity: every pill is a Pill with a fixed 30 dp row (the row's height is reserved)",
       "right.addView(p, llp(-2, dp(Pill.HEIGHT), dp(10), 0, 0, 0))" in main and "TextView tasks" not in main and "TextView saver" not in main)
 check("MainActivity: D-pad ends and order are unchanged (wireFocus and moveFocusSideways still walk the pills list)",
