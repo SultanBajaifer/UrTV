@@ -3,31 +3,49 @@
 # KEEP_KEY=1, deletes this computer's ADB key (optimize/adbkey/). After this nothing on your network can control
 # the TV, and neither can this computer until you turn debugging back on and press Allow again.
 #   optimize/lockdown.sh
-# To use rollback.sh, reset.sh or install.sh later: on the TV, Settings > System > Developer options > USB debugging
+# To use rollback.sh or install.sh later: on the TV, Settings > System > Developer options > USB debugging
 # on, then optimize/find-tv.sh, and press Allow on the TV.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PY="${PY:-optimize/venv/bin/python}"
 
-if ! ls optimize/backup-*.txt > /dev/null 2>&1 || [ ! -d optimize/run ]; then
-  echo "!! No backup in optimize/ yet: run optimize/run.sh first (undo needs it)."; exit 1
+if [ ! -s optimize/state-A.txt ]; then
+  echo "!! No optimize/state-A.txt (the TV before UrTV) yet: run optimize/run.sh first, so there is a way back."; exit 1
 fi
-echo "Before ADB goes off, make sure the backups have a second copy: optimize/backup-copy.sh <folder>"
+host="${TV_HOST:-$(cat optimize/.tv_host 2> /dev/null || true)}"; host="${host%%:*}"
+[ -n "$host" ] || { echo "!! Don't know the TV's address: optimize/find-tv.sh first."; exit 1; }
+# only a TV that answers now can be told to stop, and its answer later says whether it did
+if ! "$PY" -I optimize/tv.py "echo urtv-ok" 2> /dev/null | grep -q urtv-ok; then
+  echo "!! The TV does not answer over ADB right now (asleep? another Wi-Fi?): nothing changed. Wake it, then run again."; exit 1
+fi
+echo "Before ADB goes off, make sure the way back has a second copy: optimize/backup-copy.sh <folder>"
 
 # the last command this computer sends: the connection drops as soon as the TV applies it
 printf '%s\n' "settings put global adb_wifi_enabled 0" "settings put global adb_enabled 0" \
   | "$PY" -I optimize/tv.py --batch > /dev/null 2>&1 || true
-sleep 3
-if "$PY" -I -c '
+sleep 5
+# Off means: ADB no longer answers, while the TV itself still does on the network (its Cast port, 8008/8009). No
+# answer at all could just be a TV gone to sleep, so that is "not sure", and the key is kept.
+on_network() {
+  "$PY" -I -c '
 import socket, sys
-s = socket.socket(); s.settimeout(3)
-sys.exit(0 if s.connect_ex((sys.argv[1], int(sys.argv[2]))) else 1)' "${TV_HOST:-$(cat optimize/.tv_host 2> /dev/null)}" "${TV_PORT:-5555}"; then
-  echo "ADB is off: the TV no longer answers on the network."
-else
-  echo "!! The TV still answers on its ADB port. Turn it off by hand: Settings > System > Developer options >"
-  echo "   USB debugging (and Network debugging if listed) off."
+for port in (8008, 8009):
+    try:
+        socket.create_connection((sys.argv[1], port), timeout=3).close(); sys.exit(0)
+    except OSError:
+        pass
+sys.exit(1)' "$host"
+}
+if "$PY" -I optimize/tv.py "echo urtv-ok" 2> /dev/null | grep -q urtv-ok; then
+  echo "!! ADB is still on: the TV still answers. Turn it off by hand: Settings > System > Developer options >"
+  echo "   USB debugging (and Network / Wireless debugging if listed) off. This computer's ADB key is kept."
+  exit 1
+elif ! on_network; then
+  echo "!! Not sure ADB is off: the TV does not answer at all now (asleep or off the Wi-Fi). Check on the TV:"
+  echo "   Settings > System > Developer options > USB debugging must be off. This computer's ADB key is kept."
+  exit 1
 fi
-
+echo "ADB is off: the TV is on the network but no longer answers ADB."
 if [ "${KEEP_KEY:-}" != 1 ] && [ -d optimize/adbkey ]; then
   rm -rf optimize/adbkey
   echo "This computer's ADB key is deleted: next time, the TV asks Allow again."

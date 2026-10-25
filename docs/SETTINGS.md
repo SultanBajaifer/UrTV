@@ -90,7 +90,7 @@ something about the screensaver, the home screen or the TV, find it in the table
 | TCL: the adhan alarms or the sleep timer stop after a restart | `optimize/autostart.sh` (allows auto-start for our two apps on a TCL and writes it to disk; `autostart.sh check` reads it; the setup does it already) |
 | the person turned debugging off on the TV, is it really closed? | `optimize/find-tv.sh --closed` (`OK: ADB is closed`, `!! ADB still answers …` or `?? Can't tell` when the TV sleeps). The apps' data and content update without ADB; a new version of the apps and any change of settings from the computer need it, so it is turned on again then |
 | a TV system update brought the old home back, or apps back on | `optimize/run.sh again` (settings stay) |
-| undo everything, back as it came | `optimize/reset.sh` (the TV's own screensaver comes back with its settings) |
+| undo everything, back as it came | `optimize/rollback.sh` (`preview` first): the TV exactly as it was before UrTV (A), whatever was updated since; the TV's own screensaver comes back with its settings |
 | restart the TV | `optimize/venv/bin/python -I optimize/tv.py --reboot` (never a plain `reboot`) |
 | how much memory is free | `optimize/measure.sh after --now` |
 | the TV feels slow, free the memory now («تسريع», «نظّف الذاكرة») | on the TV: the «تسريع» pill on the home screen (Android 13 and older); from here, any Android: `optimize/boost.sh` (stops the apps left in the background, prints the memory before and after; nothing is uninstalled, disabled or cleared) |

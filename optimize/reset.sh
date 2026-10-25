@@ -2,10 +2,14 @@
 # Put a TV that was set up with these tools back the way it came, so it can be set up again "like new":
 # every package from our lists re-enabled, the stock home and screensaver back, our apps (old and new names)
 # removed, and TV Bro and SmartTube if the setup installed them, tweaks undone. Your own apps and data are not touched.
-#   optimize/reset.sh
+#   optimize/reset.sh                 back to A when this folder has it (optimize/rollback.sh), else like new
+#   LIKE_NEW=1 optimize/reset.sh      like new, even with A
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PY="${PY:-optimize/venv/bin/python}"
+# With A (the TV before UrTV, optimize/state-A.txt) there is one way back, and it is exact: optimize/rollback.sh.
+# What follows is for a TV without A (set up from another folder, or A lost): a plain, like-new state.
+if [ -s optimize/state-A.txt ] && [ "${LIKE_NEW:-}" != 1 ]; then exec optimize/rollback.sh; fi
 tv() { "$PY" -I optimize/tv.py "$@"; }
 
 echo "1/4 Stock home first (never leave the TV without one)…"

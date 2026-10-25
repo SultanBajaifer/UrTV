@@ -5,7 +5,6 @@ import android.content.SharedPreferences;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -35,16 +34,19 @@ final class Updater {
     static File pageFile(Context c) { return new File(c.getFilesDir(), "web/tv.html"); }
     static File sigFile(Context c) { return new File(c.getFilesDir(), "web/tv.html.sig"); }
 
-    /** The downloaded page, only if its saved signature still verifies (an unsigned page from before is ignored). */
+    /**
+     * The downloaded page counts only if its signature was verified when it was saved (checkPage), and the file is still
+     * the one verified then: the same length and time, recorded with it. Cheap, so the screensaver can ask on its main
+     * thread at every start; a page from before (no record) is not used until the next check downloads and verifies it.
+     */
     static boolean pageTrusted(Context c) {
         File page = pageFile(c), sig = sigFile(c);
         if (!page.isFile() || !sig.isFile()) return false;
-        try {
-            return PageKey.verify(readAll(new FileInputStream(page)), readAll(new FileInputStream(sig)));
-        } catch (Exception e) {
-            return false;
-        }
+        String seen = new Prefs(c).raw().getString("pageVerified", null);
+        return fingerprint(page).equals(seen);
     }
+
+    private static String fingerprint(File f) { return f.length() + ":" + f.lastModified(); }
 
     /** the build stamp of the page the app carries ("" if it cannot be read) */
     static String assetStamp(Context c) {
@@ -127,8 +129,9 @@ final class Updater {
             write(tmp, body);
             write(tmpSig, sig);
             // the signature first: a page without a matching one is never used (pageTrusted)
+            sp.edit().remove("pageVerified").commit();   // between the two renames neither file is trusted
             if (!tmpSig.renameTo(sigFile(c)) || !tmp.renameTo(out)) return "تعذر الحفظ";
-            sp.edit().putString("etag", newTag).apply();
+            sp.edit().putString("etag", newTag).putString("pageVerified", fingerprint(out)).apply();
             return "تم التحديث";
         } catch (Exception e) {
             return "لا يوجد اتصال";

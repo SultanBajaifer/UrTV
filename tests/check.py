@@ -362,10 +362,10 @@ for f in texts:
 check("no private IPs, keys or network names", not found, found[:10])
 
 # ---- nothing that controls the TV or undoes the setup: keys, ADB keys, backups, run folders (.githooks/pre-commit too)
-PRIVATE = re.compile(r"(^|/)(adbkey(/|$|\.pub$)|\.tv_host$|backup-[^/]*\.txt$|run(-[^/]*)?/|apks/|venv/)"
+PRIVATE = re.compile(r"(^|/)(adbkey(/|$|\.pub$)|\.tv_host$|backup-[^/]*\.txt$|state-[^/]*\.txt$|run(-[^/]*)?/|apks/|venv/)"
                      r"|\.(pem|key|p12|jks|keystore)$|^optimize/lists/mine\.txt$")
 private = [str(f.relative_to(ROOT)) for f in tracked() if PRIVATE.search(str(f.relative_to(ROOT)).replace("\\", "/"))]
-check("no keys, ADB keys, backups or run folders committed", not private, private)
+check("no keys, ADB keys, backups, the TV's state A or run folders committed", not private, private)
 private_key = [str(f.relative_to(ROOT)) for f in texts
                if "PRIVATE KEY-----" in f.read_text(encoding="utf-8", errors="ignore") and f != Path(__file__).resolve()]
 check("no private key inside any file", not private_key, private_key)

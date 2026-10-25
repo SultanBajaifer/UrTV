@@ -33,4 +33,4 @@ dist/urtv.html
 # private keys never belong in the repo (the page-signing key lives in ~/.urtv, see optimize/sign-page.sh)
 *.pem
 *.key
-optimize/apks/
+optimize/state-*.txt

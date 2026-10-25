@@ -12,6 +12,7 @@ python3 tests/install_extras_test.py
 python3 tests/install_versions_test.py
 python3 tests/install_retry_test.py
 python3 tests/snapshot_test.py
+python3 tests/lockdown_test.py
 python3 tests/sign_page_test.py
 python3 tests/run_lock_test.py
 python3 tests/reboot_test.py

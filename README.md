@@ -34,8 +34,8 @@
 يسألك عن **مدينتك** و**أنديتك**، والتلفزيون يسألك **Allow** مرة وحدة، وبعدها خلّه يشتغل: 40 دقيقة وكم إعادة تشغيل.
 
 #### بترجعه مثل ما كان؟
-نعم، بأي وقت: تطبيقاتنا تنحذف، واللي أطفأناه يرجع، وشاشة التلفزيون الأصلية ترجع.
-<sub>`optimize/reset.sh`</sub>
+نعم، بأي وقت: قبل أول تغيير نحفظ تلفزيونك مثل ما هو، ونرجّعه له بالضبط مهما حدّثنا بعدها: تطبيقاتنا تنحذف، واللي أطفأناه يرجع، وشاشة التلفزيون الأصلية ترجع.
+<sub>`optimize/rollback.sh`</sub>
 
 #### نزلت نسخة جديدة؟
 حدّث التطبيقين وإعداداتك كلها باقية. الشاشة نفسها تتحدّث لحالها. آخر الإعدادات، تحت «تحديث الشاشة الآن»، ثلاثة أسطر: الإصدار الحالي، والإصدار المتاح، وطريقة التحديث.
@@ -70,8 +70,8 @@ Settings → About → press OK on **Build** 7 times. Then go to **Developer opt
 It asks your **city** and your **clubs**, the TV asks **Allow** once, then leave it: 40 minutes, a few restarts.
 
 #### Can I put it back as it was?
-Yes, anytime: our apps are removed, what we turned off comes back on, the TV's own screen returns.
-<sub>`optimize/reset.sh`</sub>
+Yes, anytime: before the first change the setup saves your TV as it is, and puts it back exactly, whatever was updated since: our apps are removed, what we turned off comes back on, the TV's own screen returns.
+<sub>`optimize/rollback.sh`</sub>
 
 #### A new version came out?
 Update both apps; all your settings stay. The screen itself updates on its own. The settings row tells you when one exists.
@@ -143,8 +143,8 @@ Everything is scriptable over ADB, made for slow Wi-Fi (retries, resumable uploa
 | `optimize/autostart.sh` | TCL only: allows our two apps to start at boot (the adhan after a restart, the sleep service), writes it to disk, and reports it |
 | `optimize/keep.sh` | turn back on anything protected (AirPlay, casting, voice, updates…) that something turned off · `off`: what the setup turned off, by name · `restore <pkg>`: an app the person wants back, remembered so `run.sh again` leaves it on |
 | `docs/TVS.md` | what was seen on each TV model (ADB port, home switch, what to watch out for) |
-| `optimize/rollback.sh` | undo one step (`last`, `to <step>`, `show`, `diff`), only the tweaks, one app back on, or our app's previous version |
-| `optimize/reset.sh` | back to stock: lists re-enabled, stock home and screensaver back, our apps removed |
+| `optimize/rollback.sh` | back to A: the TV exactly as it was before UrTV, saved once before the first change (`optimize/state-A.txt`); `preview` shows what would change |
+| `optimize/reset.sh` | the same as `rollback.sh` when this folder has A; without A, a plain like-new state (lists re-enabled, stock home and screensaver back, our apps removed) |
 | `optimize/backup-copy.sh` | a second copy of what undo needs (USB stick, cloud folder) |
 | `optimize/lockdown.sh` | the last step: ADB off on the TV, this computer's ADB key deleted |
 | `optimize/sign-page.sh` | sign the screen page (`keygen` once, then `sign` after each change) so the TV accepts it |
@@ -261,8 +261,9 @@ This fork of [tshi-dev/UrTV](https://github.com/tshi-dev/UrTV) is hardened for o
   `ALLOW_REPLACE=1`.
 - **No location permission** for the home screen (the Wi-Fi tile shows only "connected"), and **no report** sent
   anywhere.
-- **ADB closed at the end** (`optimize/lockdown.sh`), and per-step rollback (`optimize/rollback.sh`) for when it's
-  back on.
+- **ADB closed at the end** (`optimize/lockdown.sh`, which only reports "off" once the TV stops answering ADB), and
+  one way back for when it's on again: `optimize/rollback.sh` returns the TV to A, as it was before UrTV.
+- **Play Protect is never switched off:** when it objects to an install, you press «تثبيت على أي حال» on the TV.
 - **Nothing private in the repo:** CI and `tests/check.py` fail on a committed key, ADB key, backup or run folder.
 
 **Owner's one-time setup:** make the APK signing key (`python3 .github/tools/make_signing_key.py`, it puts it in the
@@ -270,11 +271,10 @@ repo's secrets), make the page key (`optimize/setup.sh && optimize/sign-page.sh 
 `android/app/page-key.pub`, then `python3 src/build.py && optimize/sign-page.sh sign` and commit `dist/`. Keep a
 backup of `~/.urtv/page-signing.pem` somewhere safe.
 
-**Fonts (optional):** Thmanyah may only ship inside a built app, so it is not in this repo. To build with it, put the
-files from https://font.thmanyah.com in a private repo of your own (`web/*.woff2` and `android/*.otf`, the names
-in `src/build.py`), then in this repo's settings add the variable `FONTS_REPO` (e.g. `SultanBajaifer/urtv-fonts`)
-and the secret `FONTS_TOKEN` (a fine-grained token with read access to that repo only). Without them CI builds
-with the TV's own Arabic font.
+**Fonts:** Thmanyah may only ship inside a built app, so it is not in this repo. The build takes it from the commit of
+this repo's history that still had it (`.github/tools/fonts.sh`; run it once for a local build too), puts it inside
+the APKs and never commits it. A private fonts repo of your own can replace that: variable `FONTS_REPO` and secret
+`FONTS_TOKEN` (a read-only token for that repo only).
 
 ## Credits
 

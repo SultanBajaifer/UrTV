@@ -75,7 +75,12 @@ rc, out, log, inst, _ = run(lock=LOCK.replace(SHA[STUBE], "0" * 64))
 check("a download that is not the pinned file is not installed, the step fails", rc == 1 and "install smarttube" not in log
       and "install tvbro" in log and "does not match its pinned SHA-256" in out, f"{rc} {log} {out}")
 rc, out, log, inst, _ = run(lock="")
-check("no pinned build: nothing installed, the step fails", rc == 1 and "No pinned build" in out and not inst, f"{rc} {log} {out}")
+check("not pinned yet: skipped with a note, the setup goes on", rc == 0 and "not pinned yet" in out and not inst, f"{rc} {log} {out}")
+rc, out, log, inst, _ = run(lock="com.phlox.tvwebbrowser x86 1 https://x/a.apk " + "0" * 64 + "\n")
+check("no pinned build for this TV's processor: nothing installed, the step fails", rc == 1 and "No pinned build" in out and not inst, f"{rc} {log} {out}")
+body = (ROOT / "optimize/install.sh").read_text(encoding="utf-8").split("from_lock() {", 1)[1].split("\n}\n", 1)[0]
+check("TV Bro and SmartTube are never removed, whatever ALLOW_REPLACE says (it is for our two apps only)",
+      "pm uninstall" not in body and "ALLOW_REPLACE" not in body)
 check("GitHub's release list is never asked", "api" not in log, log)
 print("\nall install-extras checks passed" if not failed else f"\n{failed} failed")
 sys.exit(1 if failed else 0)

@@ -7,9 +7,12 @@
 #                                  without ads, github.com/yuliskov/SmartTube): only the versions pinned in
 #                                  optimize/lists/extras.lock (optimize/pin-extras.sh), SHA-256 checked
 #   optimize/install.sh all        both (saver, launcher)
-# Our APKs are checked against the release's SHA256SUMS.txt. An app on the TV signed with another key is never
-# replaced unless ALLOW_REPLACE=1 (that removes it and its settings). Every installed APK is kept in optimize/apks/
-# for optimize/rollback.sh app; LOCAL_APK=<kept file> installs one of those instead of downloading.
+# Our APKs are checked against the release's SHA256SUMS.txt: that catches a broken or cut-off download, not a swapped
+# release (whoever can replace the APK can replace that file too). What a swapped APK can't pass is Android's own
+# check that an update is signed with the same key: so our app on the TV signed with another key is never replaced
+# unless ALLOW_REPLACE=1 (that removes it and its settings; TV Bro and SmartTube are never removed). A release from
+# before SHA256SUMS.txt existed (an older APK_TAG) installs only with ALLOW_NO_SUMS=1.
+# Play Protect's check is never switched off: when it objects, the person presses «تثبيت على أي حال» on the TV.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PY="${PY:-optimize/venv/bin/python}"
@@ -40,37 +43,13 @@ curl_get() {
 
 sha256() { if command -v sha256sum > /dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | awk '{print $1}'; }
 
-# Every installed APK is kept in optimize/apks/<package>/ (newest last): optimize/rollback.sh app goes back to one.
-keep_apk() {   # $1 file, $2 package
-  local dir="optimize/apks/$2" h
-  h=$(sha256 "$1")
-  mkdir -p "$dir"
-  [ -f "$dir/$h.apk" ] || cp "$1" "$dir/$h.apk"
-  printf '%s %s\n' "$(date +%Y%m%d-%H%M%S)" "$h" >> "$dir/installed.txt"
-}
-
-# Play Protect can refuse an ADB install (INSTALL_FAILED_VERIFICATION_FAILURE, seen on a TCL Android 14): its ADB
-# check is switched off for that install only, and put back as it was, whatever happens (see the EXIT trap).
-VERIFIER=verifier_verify_adb_installs
-verifier_old=; verifier_set=0
-restore_verifier() {
-  [ "$verifier_set" = 1 ] || return 0
-  verifier_set=0
-  if [ -z "$verifier_old" ] || [ "$verifier_old" = null ]; then
-    "$PY" -I optimize/tv.py "settings delete global $VERIFIER" > /dev/null 2>&1 || true
-  else
-    "$PY" -I optimize/tv.py "settings put global $VERIFIER $verifier_old" > /dev/null 2>&1 || true
-  fi
-}
-trap restore_verifier EXIT
 
 pm_install() {   # $1 file name in /data/local/tmp, $2 package: pm's answer. A big APK can install silently for over a
   # minute, which ADB takes for a dead TV: it runs in the background on the TV and is polled (tv.py --bg).
   # Some operator TVs have a system service that removes apps installed from ADB seconds later; installed with the
   # Play Store as the installer they stay. So: still there after 3 s? If not, install once more that way, and say so.
-  local out flags="-r"
-  [ "${DOWNGRADE:-}" = 1 ] && flags="-r -d"   # optimize/rollback.sh app
-  out=$("$PY" -I optimize/tv.py --bg install "pm install $flags /data/local/tmp/$1")
+  local out
+  out=$("$PY" -I optimize/tv.py --bg install "pm install -r /data/local/tmp/$1")
   if grep -q Success <<< "$out"; then
     sleep 3
     if ! "$PY" -I optimize/tv.py "pm list packages $2" | tr -d '\r' | grep -qx "package:$2"; then
@@ -89,42 +68,30 @@ push_install() {   # $1 apk name, $2 package
   if [ "$2" = sa.urtv.home ]; then   # the home app targets an older SDK than Play Protect likes (seen on Android 12-14)
     echo "للشخص: بعد لحظات ممكن تطلع على التلفزيون رسالة من Play Protect؛ إذا طلعت اضغط «تثبيت على أي حال» (Install anyway)."
   fi
-  if [ -n "${LOCAL_APK:-}" ]; then   # optimize/rollback.sh app: a version kept in optimize/apks/, named by its SHA-256
-    if [ "$(sha256 "$LOCAL_APK")" != "$(basename "$LOCAL_APK" .apk)" ]; then echo "!! $LOCAL_APK changed since it was kept: not installed"; exit 1; fi
-    cp "$LOCAL_APK" "optimize/$1"
-  else
-    if ! curl_get -fsSL -o "optimize/$1" "$REL/$1"; then
-      echo "!! Could not download $REL/$1 (tag ${APK_TAG:-apk-latest}): no such build, or no internet"; exit 1
-    fi
-    # the release's SHA256SUMS.txt (written by the build): catches a broken or cut-off download
-    local sums want got
-    sums=$(curl_get -fsSL "$REL/SHA256SUMS.txt" 2> /dev/null || true)
-    want=$(awk -v f="$1" '$2 == f {print $1}' <<< "$sums")
-    got=$(sha256 "optimize/$1")
-    if [ -z "$want" ]; then
-      echo "!! $REL has no SHA256SUMS.txt entry for $1: refusing an unchecked APK"; rm -f "optimize/$1"; exit 1
-    elif [ "$want" != "$got" ]; then
-      echo "!! $1 does not match its SHA-256 ($got, expected $want): not installed"; rm -f "optimize/$1"; exit 1
-    fi
+  if ! curl_get -fsSL -o "optimize/$1" "$REL/$1"; then
+    echo "!! Could not download $REL/$1 (tag ${APK_TAG:-apk-latest}): no such build, or no internet"; exit 1
+  fi
+  local sums want got
+  sums=$(curl_get -fsSL "$REL/SHA256SUMS.txt" 2> /dev/null || true)
+  want=$(awk -v f="$1" '$2 == f {print $1}' <<< "$sums")
+  got=$(sha256 "optimize/$1")
+  if [ -z "$want" ] && [ "${ALLOW_NO_SUMS:-}" = 1 ]; then
+    echo "ALLOW_NO_SUMS=1: $REL has no SHA256SUMS.txt (a release from before it existed): $1 installs unchecked."
+  elif [ -z "$want" ]; then
+    echo "!! $REL has no SHA256SUMS.txt entry for $1: refusing an unchecked APK (an older release? ALLOW_NO_SUMS=1)"
+    rm -f "optimize/$1"; exit 1
+  elif [ "$want" != "$got" ]; then
+    echo "!! $1 does not match its SHA-256 ($got, expected $want): not installed"; rm -f "optimize/$1"; exit 1
   fi
   "$PY" -I optimize/tv.py --push-b64 "optimize/$1" "/data/local/tmp/$1"
   local out
   out=$(pm_install "$1" "$2")
   if grep -q INSTALL_FAILED_VERIFICATION_FAILURE <<< "$out"; then
-    verifier_old=$("$PY" -I optimize/tv.py "settings get global $VERIFIER" | tr -d '\r\n' || true)
-    echo "Play Protect refused the install over ADB: its ADB check is off for this install only, and put back right after (was: ${verifier_old:-not set})."
-    echo "للشخص: لو طلعت على التلفزيون رسالة من Play Protect (التطبيق «غير آمن» أو «مبني لإصدار قديم»)، اضغط «تثبيت على أي حال» (Install anyway) بالريموت. هذا تطبيق تلفزيونك، والرسالة تطلع لأن الشاشة الرئيسية مبنية لإصدار أندرويد أقدم."
-    verifier_set=1
-    "$PY" -I optimize/tv.py "settings put global $VERIFIER 0" > /dev/null || true
+    # Play Protect stopped it. Its check stays on: the person decides, on the TV, and the install is tried once more
+    echo "Play Protect stopped the install. Its check is left on: the person decides on the TV."
+    echo "للشخص: انتبه للتلفزيون الحين: لو طلعت رسالة من Play Protect (التطبيق «غير آمن» أو «مبني لإصدار قديم»)، اضغط «تثبيت على أي حال» (Install anyway) بالريموت. هذا تطبيق تلفزيونك، والرسالة تطلع لأن الشاشة الرئيسية مبنية لإصدار أندرويد أقدم."
+    sleep 20
     out=$(pm_install "$1" "$2")
-  fi
-  if [ "${DOWNGRADE:-}" = 1 ] && grep -q VERSION_DOWNGRADE <<< "$out"; then
-    # Android takes an older version over a newer one only for debug builds: remove the app but keep its data (-k),
-    # then install the older one, which finds its settings again
-    echo "Going back a version: removing $2 (its settings are kept), then installing the older one."
-    [ "$2" = sa.urtv.home ] && "$PY" -I optimize/tv.py "pm enable ${STOCK%%/*}" > /dev/null || true
-    "$PY" -I optimize/tv.py "pm uninstall -k $2" || true
-    out=$(DOWNGRADE= pm_install "$1" "$2")
   fi
   if ! grep -q Success <<< "$out"; then
     # a signing-key clash: the app on the TV was not built with this repo's key. Android's own refusal is the check a
@@ -145,14 +112,13 @@ push_install() {   # $1 apk name, $2 package
     else
       echo "!! Install of $1 failed: $out"
       if grep -q INSTALL_FAILED_VERIFICATION_FAILURE <<< "$out"; then
-        echo "   Play Protect still refuses it. Tell the person, in Arabic: «اضغط على التلفزيون «تثبيت على أي حال» لما تطلع رسالة Play Protect، وإذا ما طلعت: الإعدادات ← متجر Play ← Play Protect ← «فحص التطبيقات» وقف مؤقتاً، وبعدها نعيد المحاولة». Do not turn the verifier off yourself (settings put global package_verifier_enable 0): only this script changes verifier_verify_adb_installs, for the install, and puts it back."
+        echo "   Play Protect still stops it. Tell the person, in Arabic: «لما نعيد المحاولة، انتبه للتلفزيون واضغط «تثبيت على أي حال» لما تطلع رسالة Play Protect». Then the same command once more."
+        echo "   Never switch Play Protect or its checks off (package_verifier_enable, verifier_verify_adb_installs), and never ask the person to: if it keeps refusing, stop and tell them."
       fi
       exit 1
     fi
   fi
-  restore_verifier
   "$PY" -I optimize/tv.py "rm -f /data/local/tmp/$1"
-  keep_apk "optimize/$1" "$2"
   rm -f "optimize/$1"
 }
 
@@ -183,7 +149,7 @@ from_lock() {   # $1 package
   "$PY" -I optimize/tv.py --push-b64 "optimize/$name" "/data/local/tmp/$name"
   out=$(pm_install "$name" "$1")
   "$PY" -I optimize/tv.py "rm -f /data/local/tmp/$name" > /dev/null
-  if grep -q Success <<< "$out"; then echo "Installed $name"; keep_apk "optimize/$name" "$1"
+  if grep -q Success <<< "$out"; then echo "Installed $name"
   elif grep -qE 'UPDATE_INCOMPATIBLE|signatures do not match' <<< "$out"; then
     echo "$1 is already installed from somewhere else: left as it is (with its settings)."   # never removed
   else echo "!! Install of $name failed: $out"; failed=1; fi
@@ -191,8 +157,9 @@ from_lock() {   # $1 package
 }
 
 if [ "$what" = extras ]; then
-  if [ ! -f optimize/lists/extras.lock ]; then
-    echo "!! optimize/lists/extras.lock is missing: run optimize/pin-extras.sh first (or SKIP_EXTRAS=1)"; exit 1
+  if [ ! -s optimize/lists/extras.lock ]; then   # not pinned yet: skipped, so the rest of the setup goes on
+    echo "TV Bro and SmartTube skipped: not pinned yet. To add them later: optimize/pin-extras.sh, then optimize/install.sh extras"
+    exit 0
   fi
   from_lock com.phlox.tvwebbrowser
   from_lock org.smarttube.stable

@@ -9,11 +9,11 @@
 #   SKIP_LAUNCHER=1 optimize/run.sh   keep the TV's own home screen (firmware that won't let another app be Home)
 #   SKIP_EXTRAS=1 optimize/run.sh     without TV Bro and SmartTube
 #   (a different TV than the one the setup started on is refused; for a new TV: optimize/venv/bin/python -I optimize/tv.py --new-tv)
-# Undo one step or more: optimize/rollback.sh (show, last, to <step>, ...); everything: optimize/reset.sh
+# Back to the TV as it was before UrTV (A, saved once by the backup step): optimize/rollback.sh
 # Before: optimize/setup.sh and optimize/find-tv.sh. Optional packages the household gave up go in
 # optimize/lists/mine.txt (one per line, picked from lists/tcl-optional.txt) before running.
 # Results in optimize/run/: summary.md (before/after), ram-*.txt, backup.txt, report.md, steps.log (times), run.log,
-# snap-<step>.txt and changes.log (for optimize/rollback.sh).
+# A itself is optimize/state-A.txt (kept outside run/, never replaced).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PY="${PY:-optimize/venv/bin/python}"
@@ -78,7 +78,7 @@ title() {
 }
 
 if [ "${1:-}" = again ]; then   # a TV system update can re-enable what we turned off and take Home back
-  rm -f "$RUN"/.done-* "$RUN/steps.log" "$RUN"/snap-*.txt "$RUN/changes.log"   # rollback starts from this run
+  rm -f "$RUN"/.done-* "$RUN/steps.log"   # A (optimize/state-A.txt) stays: it is the TV before the first setup
   kept=
   if [ -f "$RUN/summary.md" ]; then   # measure.sh appends: a second run's before/after lines would double up
     n=1; while [ -e "$RUN/summary-$n.md" ]; do n=$((n + 1)); done
@@ -169,7 +169,14 @@ do_step() {
     precheck)    rc=0; optimize/precheck.sh > "$RUN/precheck.txt" 2>&1 || rc=$?   # 3: not an Android TV, stop (nothing was changed)
                  cat "$RUN/precheck.txt"; [ "$rc" = 0 ] || exit "$rc" ;;
     probe)       tv --probe | tee "$RUN/tv.txt" ;;
-    backup)      optimize/backup.sh && cp "$(ls -t optimize/backup-*.txt | head -1)" "$RUN/backup.txt" ;;
+    backup)      optimize/backup.sh && cp "$(ls -t optimize/backup-*.txt | head -1)" "$RUN/backup.txt"
+                 # A: the TV before anything changes, once (a later run, an update or "again" keeps the first one)
+                 if [ ! -s optimize/state-A.txt ]; then "$PY" -I optimize/snapshot.py save optimize/state-A.txt
+                 elif "$PY" -I optimize/snapshot.py same optimize/state-A.txt; then echo "   A is saved already (optimize/state-A.txt): kept"
+                 else
+                   echo "!! optimize/state-A.txt is another TV's. Move it somewhere safe (that TV's way back), then run again."
+                   exit 1
+                 fi ;;
     keep)        optimize/keep.sh | tee "$RUN/keep.txt" ;;
     before)      optimize/measure.sh before ;;
     before-saver) optimize/measure.sh before-screensaver --screensaver ;;
@@ -203,20 +210,12 @@ if [ -n "$tv_id" ] && [ "$(cat "$RUN/.tv" 2> /dev/null || true)" != "$tv_id" ]; 
   echo "$tv_id" > "$RUN/.tv"
 fi
 
-# Steps that change the TV: its state is saved first (once, so a retried step keeps the real "before"), and
-# optimize/rollback.sh can put it back step by step.
-CHANGES=" safe mine community tweaks screensaver launcher extras autostart "
 for s in "${STEPS[@]}"; do
   [ -f "$RUN/.done-$s" ] && continue
   current=$s
   echo
   echo "▶ $(title "$s")"
   stamp "start $s"
-  if [[ "$CHANGES" == *" $s "* ]] && [ ! -s "$RUN/snap-$s.txt" ]; then
-    "$PY" -I optimize/snapshot.py save "$RUN/snap-$s.txt.tmp" > /dev/null && mv "$RUN/snap-$s.txt.tmp" "$RUN/snap-$s.txt"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') $s" >> "$RUN/changes.log"
-    echo "   (state saved: optimize/rollback.sh last undoes this step)"
-  fi
   do_step "$s"
   touch "$RUN/.done-$s"
   stamp "done $s"

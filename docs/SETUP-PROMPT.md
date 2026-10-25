@@ -39,7 +39,7 @@ file before message 1 is fine; nothing else.
 
 Never ask me to approve everything for the whole task, and never suggest an auto-approve or "bypass" mode. Before
 each numbered step below, and before every command that changes the TV, tell me in one plain Arabic line what it
-does and how to undo it (the `optimize/rollback.sh` line), then run it and let me approve it.
+does and that `optimize/rollback.sh` puts the TV back to how it was before UrTV, then run it and let me approve it.
 
 **Message 2, the city:**
 
@@ -172,15 +172,15 @@ yet»), or an old UrTV folder is there without a working `.git`, delete that fol
   tuner, firmware updates, Play Store, Google services), and never edit `keep.txt` to get past a refusal. Never
   disable the TV's own home screen or setup app yourself; only `optimize/install.sh launcher` does that, behind a
   5-minute safety switch.
-- Never switch Play Protect or the package verifier off yourself (`settings put global package_verifier_enable 0`, or
-  `verifier_verify_adb_installs`): one agent did, for the whole TV. `optimize/install.sh` is the only thing that touches
-  `verifier_verify_adb_installs`, for one install, and puts it back.
+- Never switch Play Protect or the package verifier off (`settings put global package_verifier_enable 0`, or
+  `verifier_verify_adb_installs`), not even for one install, and never ask me to: when it objects, I press
+  «تثبيت على أي حال» on the TV myself. Nothing in `optimize/` touches those settings.
 - Never uninstall system apps, never `pm clear`, never factory-reset, never touch accounts, Wi-Fi, network or
   developer settings; ADB goes off only through `optimize/lockdown.sh` in step 8, after I agree. Never delete
-  `optimize/run/`, `optimize/apks/` or `optimize/backup-*.txt`: they are how we undo. Everything is reversible:
-  `optimize/rollback.sh` undoes one step at a time, `optimize/reset.sh` puts the TV back as it came.
+  `optimize/state-A.txt`, `optimize/run/` or `optimize/backup-*.txt`: they are how we go back. Everything is
+  reversible: `optimize/rollback.sh` puts the TV back to A, exactly as it was before UrTV changed anything.
 - Never `git add`, commit or push from this folder, and never copy `optimize/adbkey/` anywhere: it is the key to my
-  TV. Never set `ALLOW_REPLACE=1`, `DOWNGRADE=1` or edit `extras.lock` / `SHA256SUMS.txt` to get past a refusal:
+  TV. Never set `ALLOW_REPLACE=1`, `ALLOW_NO_SUMS=1` or edit `extras.lock` / `SHA256SUMS.txt` to get past a refusal:
   a signature or checksum refusal means stop and show me.
 - Anything I ask for about the screensaver, the home screen or the TV (now or any time later): look it up in
   `docs/SETTINGS.md` and use its command. Never edit the apps' code, build or install your own APK, or turn the
@@ -201,7 +201,7 @@ Lines starting with `!!` are the scripts telling you to stop and act. These are 
 | `ModuleNotFoundError: No module named 'adb_shell'`, or `!! The Python packages aren't in optimize/venv` | `optimize/setup.sh` didn't finish (often pip had no network) | `optimize/setup.sh` again until it ends with «✓ Python ADB client»; its `!!` line says what is wrong. Then the same command; don't stop for this |
 | `!! This folder's path is too long for Windows`, `Filename too long`, or `DLL load failed … too long` | the UrTV folder sits too deep for Windows | clone it again into a short folder: `git clone -c core.longpaths=true https://github.com/SultanBajaifer/UrTV C:/UrTV`, and carry on there (or once, `git config --global core.longpaths true`, then clone again; a short folder like `C:/UrTV` is still best) |
 | `!! No working Python 3 here`, or `python` opens the Microsoft Store | Python not installed, or only Windows' Store shortcut | ask me once, install it yourself (`winget install -e --id Python.Python.3.12 --source winget --accept-source-agreements --accept-package-agreements`), then the same command again in Git Bash |
-| `INSTALL_FAILED_VERIFICATION_FAILURE: Install not allowed` (seen on Android 12–14 for the home app, which targets an older SDK than Play Protect likes) | Play Protect checks apps installed over ADB and refused it | tell me, in Arabic, to watch the TV and press «تثبيت على أي حال» (Install anyway) if Play Protect shows a message (`install.sh` prints these words). `install.sh` switches `verifier_verify_adb_installs` to 0 for that install only, retries once and puts the old value back (it says so in one line); if it still fails, the line shows the TV's own message and the same words. **Never** turn the verifier off for the whole TV |
+| `INSTALL_FAILED_VERIFICATION_FAILURE: Install not allowed` (seen on Android 12–14 for the home app, which targets an older SDK than Play Protect likes) | Play Protect checks apps installed over ADB and refused it | tell me, in Arabic, to watch the TV and press «تثبيت على أي حال» (Install anyway) if Play Protect shows a message (`install.sh` prints these words). `install.sh` waits 20 seconds for me and tries once more; it never switches Play Protect's check off. If it still fails: the same command once more while I watch the TV; if again, stop and tell me. **Never** turn the verifier off |
 | `Could not download …` on Windows with `CRYPT_E_NO_REVOCATION_CHECK` / `revocation` | Windows' curl (Schannel) can't reach the certificate revocation server | nothing: `install.sh` retries 3 times and, on that error, once more with `--ssl-revoke-best-effort`; if it keeps failing, check the internet/proxy and run the same command again |
 | `CERTIFICATE_VERIFY_FAILED` (macOS) | python.org's Python has no CA certificates | `optimize/setup.sh` again: it installs certifi into `optimize/venv` and every script uses it; if the line stays, delete `optimize/venv` first |
 | `symbol _ERR_get_error_all`, or a cryptography `DLL`/`dlopen` error (macOS) | an old system Python (3.9) was used, and the cryptography wheel won't load on it | `brew install python@3.12`, or with no admin password and no Homebrew `uv python install 3.12` (install uv first: `curl -LsSf https://astral.sh/uv/install.sh \| sh`), delete `optimize/venv`, then `optimize/setup.sh`: uv's Python is found by itself |
@@ -239,7 +239,7 @@ Lines starting with `!!` are the scripts telling you to stop and act. These are 
 | `!! Install of … failed` | usually storage, or a very old Android | stop and show me |
 | `!! Could not download …` (install.sh) | no such build at that tag, or no internet on this computer | check `APK_TAG` (unset = the latest) and the releases page https://github.com/SultanBajaifer/UrTV/releases, and that the computer is online; then the same command |
 | `!! GitHub rate limit` / `HTTP Error 403` (pin-extras.sh) | GitHub allows only a few anonymous requests an hour | wait a few minutes, then the same command |
-| a step went wrong and I want it undone | | `optimize/rollback.sh diff` (show me), then `optimize/rollback.sh last` |
+| something went wrong and I want the TV as it was | | `optimize/rollback.sh preview` (show me), then `optimize/rollback.sh` |
 | `Done, with problems:` and `optimize/run.sh` exits 1 | every step ran, but `report.md` has `!!` lines (printed under it) | read them, fix what each says (this table), then `optimize/run.sh` again: only the report step is redone |
 | `ADB dropped during the switch; the TV is back, trying the switch again` | Wi-Fi ADB dropped while the home was being switched; the script waited for the TV (up to 6 minutes) and is doing the switch a second time, the safety switch armed again | nothing, wait; only if it ends in `!!` follow that line |
 | `!! The safety switch put the stock home back` | ADB was slower than the 5-minute switch | nothing is broken: the same command again |
@@ -296,13 +296,12 @@ out, tell me again and run it once more.
 ## 2. Before you run it: how to undo
 
 Before you start step 3, tell me in plain Arabic how to undo, so I know it is safe (say the folder's full path):
-- `optimize/rollback.sh last` undoes the last step only (the TV's state is saved before each step);
-  `optimize/rollback.sh show` lists what can be undone, `optimize/rollback.sh to <step>` goes back further;
-- `optimize/rollback.sh tweaks` undoes only the speed tweaks, `optimize/rollback.sh enable <app>` turns one app back
-  on, `optimize/rollback.sh app <our app>` goes back to its previous version;
-- `optimize/reset.sh` puts the TV back as it came (the disabled apps back on, the TV's own home screen and
-  screensaver back, our two apps removed, TV Bro and SmartTube removed if the setup installed them, the speed
-  tweaks back to Android's defaults).
+- before its first change, the setup saves the TV as it is now: «A» (`optimize/state-A.txt`), once, never replaced
+  by later updates;
+- `optimize/rollback.sh` puts the TV back to A at any time, whatever was installed or updated since: every app on
+  or off as in A, the TV's own home screen and screensaver back, our two apps removed, TV Bro and SmartTube removed
+  if they were not there in A, the speed tweaks undone; `optimize/rollback.sh preview` shows it first;
+- afterwards the TV can be set up again, and A still leads back to the same TV.
 My photos, accounts and other apps are never touched. All of these need ADB on (after step 8: Developer options →
 USB debugging on, `optimize/find-tv.sh`, Allow on the TV).
 
@@ -322,9 +321,8 @@ measures again and writes `optimize/run/report.md`. Before the optional picks, o
 know (a Sony, Hisense, Haier, Xiaomi…), `optimize/community.sh` applies the tested list for exactly that model from
 CleanYourTV (MIT, `optimize/lists/community/`) if there is one: never a list for another model, never anything in
 `keep.txt`, a launcher or a setup wizard; `report.md` shows them («Community list: …») and `optimize/keep.sh off` names them.
-Before each step that changes the TV it saves the TV's state (`optimize/run/snap-<step>.txt`). If it stops for any
-reason: `optimize/run.sh` again (it continues), and `optimize/run.sh status` shows where it is. If I want a step
-undone: `optimize/rollback.sh last`.
+Before its first change it saves A (`optimize/state-A.txt`). If it stops for any reason: `optimize/run.sh` again (it
+continues), and `optimize/run.sh status` shows where it is. If I want the TV as it was: `optimize/rollback.sh`.
 
 If the home-screen step says Home did not switch, leave the TV alone for 5 minutes (the stock home comes back by
 itself) and tell me. Some TCL firmware keeps its own home: then `SKIP_LAUNCHER=1 optimize/run.sh`.
@@ -432,9 +430,9 @@ optimize/run.sh status                            # every step ✓, and «report
   asleep). To change anything later I turn it back on and you start from `optimize/find-tv.sh`.
 - In one line, what I can still ask you to change any time: the favourites, the card on the home screen, the
   screensaver delay, and the optional TCL extras (the TCL tab and channels, game bar, T-Cast…).
-- How to undo, again: the folder's full path and the exact commands to paste there (`optimize/rollback.sh show`,
-  `optimize/rollback.sh last`, `optimize/reset.sh`; on Windows in Git Bash), what they bring back, and that if I
-  ever want it, I can open an agent on this computer and say «رجّع التلفزيون مثل ما كان: شغّل optimize/reset.sh في مجلد UrTV».
+- How to go back, again: the folder's full path and the exact command to paste there (`optimize/rollback.sh`; on
+  Windows in Git Bash), what it brings back, that it needs USB debugging on, and that if I ever want it, I can open
+  an agent on this computer and say «رجّع التلفزيون مثل ما كان: شغّل optimize/rollback.sh في مجلد UrTV».
 
 ### Offer: my own photos (once, after step 7; skip it if I'm in a hurry)
 

@@ -52,7 +52,8 @@ case "$1" in
     if [ -n "$INSTALL_OUT" ] && [ ! -f "$T/replaced" ]; then echo "$INSTALL_OUT"; case "$INSTALL_OUT" in *signatures*) ;; *) exit 0 ;; esac
       [ -n "$ALLOW_REPLACE" ] && touch "$T/replaced"; exit 0
     fi
-    if [ -n "$VERIFY" ] && { [ "$VERIFY" = always ] || [ "$(cat "$T/verifier" 2>/dev/null)" != 0 ]; }; then
+    # Play Protect: "once" stops the first install (the person then presses «تثبيت على أي حال»), "always" every one
+    if [ -n "$VERIFY" ] && { [ "$VERIFY" = always ] || [ ! -f "$T/pressed" ]; }; then touch "$T/pressed"
       log refused; echo "Failure [INSTALL_FAILED_VERIFICATION_FAILURE: Install not allowed]"
     else log installed; echo Success; fi ;;
   "getprop ro.serialno")
@@ -79,7 +80,7 @@ if [ "$CURL_MODE" = revoke ] && [ $ok = 0 ]; then
 fi
 echo x >> "$T/curls"
 # the release's SHA256SUMS.txt: the stub's APKs are empty files (SUM= another value: a swapped download)
-case "$*" in *SHA256SUMS.txt*) printf '%s  urtv-home.apk\n%s  urtv-screensaver.apk\n' "${SUM:-$EMPTY}" "${SUM:-$EMPTY}"; exit 0 ;; esac
+case "$*" in *SHA256SUMS.txt*) [ "$SUM" = none ] && exit 22; printf '%s  urtv-home.apk\n%s  urtv-screensaver.apk\n' "${SUM:-$EMPTY}" "${SUM:-$EMPTY}"; exit 0 ;; esac
 while [ $# -gt 0 ]; do [ "$1" = -o ] && : > "$2"; shift; done
 '''
 
@@ -122,13 +123,14 @@ cases = [
      lambda c, o, l: c == 1 and l.count("arm") == 2 and "!! The safety switch put the stock home back" in o),
     ("TV never answers: exits 1", run("e", 1, "stock", down_polls=99),
      lambda c, o, l: c == 1 and "did not come back within 6 minutes" in o and l.count("arm") == 1),
-    ("Play Protect refuses: check off for the install, old value back", run("f", 0, "", verify="once", verifier="1"),
-     lambda c, o, l: c == 0 and "Play Protect refused" in o and "(was: 1)" in o and l.count("refused") == 1
-     and l.count("installed") == 1 and l[l.index("put-0"):].count("put-1") == 1 and l[-1] == "final-1"),
-    ("Play Protect refuses, setting unset: deleted again", run("g", 0, "", verify="once"),
-     lambda c, o, l: c == 0 and "(was: null)" in o and "delete" in l and "final-0" not in l and "final-1" not in l),
-    ("Play Protect refuses twice: one retry, old value still restored", run("h", 0, "", verify="always", verifier="1"),
-     lambda c, o, l: c == 1 and l.count("refused") == 2 and "Install of urtv-home.apk failed" in o and l[-1] == "final-1"),
+    ("Play Protect stops it once: the person presses «تثبيت على أي حال», tried once more, its check never touched",
+     run("f", 0, "", verify="once", verifier="1"),
+     lambda c, o, l: c == 0 and "Play Protect stopped the install" in o and l.count("refused") == 1
+     and l.count("installed") == 1 and not any(x.startswith("put-") or x == "delete" for x in l) and l[-1] == "final-1"),
+    ("Play Protect stops it twice: one retry, then it says so; the check is still never touched",
+     run("h", 0, "", verify="always", verifier="1"),
+     lambda c, o, l: c == 1 and l.count("refused") == 2 and "Install of urtv-home.apk failed" in o
+     and not any(x.startswith("put-") or x == "delete" for x in l)),
     ("Windows revocation error: retried with --ssl-revoke-best-effort", run("j", 0, "", curl_mode="revoke"),
      lambda c, o, l: c == 0 and "without that check" in o and "Play Protect refused" not in o),
     ("the TV removes the app after a plain install: once more as the Play Store", run("k", 0, "", vanish="plain"),
@@ -161,6 +163,11 @@ cases = [
     ("saver: other signing key refuses, removes nothing",
      run("s2", 0, "", what="saver", INSTALL_OUT="Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: signatures do not match]"),
      lambda c, o, l: c == 1 and "Refusing" in o and "uninstall" not in l),
+    ("saver: a release without SHA256SUMS.txt is refused", run("s4", 0, "", what="saver", SUM="none"),
+     lambda c, o, l: c == 1 and "no SHA256SUMS.txt entry" in o and "ALLOW_NO_SUMS=1" in o and "installed" not in l),
+    ("saver: ALLOW_NO_SUMS=1 installs a release from before SHA256SUMS.txt, and says so",
+     run("s5", 0, "", what="saver", SUM="none", ALLOW_NO_SUMS="1"),
+     lambda c, o, l: c == 0 and "installs unchecked" in o and l.count("installed") == 1),
     ("saver: other signing key with ALLOW_REPLACE=1 replaces",
      run("s3", 0, "", what="saver", ALLOW_REPLACE="1",
          INSTALL_OUT="Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: signatures do not match]"),

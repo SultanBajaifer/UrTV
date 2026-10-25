@@ -2,7 +2,7 @@
 # Refuse to commit anything that controls the TV or undoes the setup (optimize/setup.sh turns this hook on).
 # The same rule is in tests/check.py, so CI catches what a commit without the hook let through.
 bad=$(git diff --cached --name-only --diff-filter=ACMR | grep -E \
-  '(^|/)(adbkey(/|$|\.pub$)|\.tv_host$|backup-[^/]*\.txt$|run(-[^/]*)?/|apks/|venv/)|\.(pem|key|p12|jks|keystore)$|^optimize/lists/mine\.txt$' || true)
+  '(^|/)(adbkey(/|$|\.pub$)|\.tv_host$|backup-[^/]*\.txt$|state-[^/]*\.txt$|run(-[^/]*)?/|apks/|venv/)|\.(pem|key|p12|jks|keystore)$|^optimize/lists/mine\.txt$' || true)
 keys=$(git diff --cached --name-only --diff-filter=ACMR -z | xargs -0 -r grep -l 'PRIVATE KEY-----' -- 2> /dev/null | grep -vE '^(tests/check.py|.githooks/pre-commit)$' || true)
 if [ -n "$bad$keys" ]; then
   echo "!! Not committed: these are private (keys, ADB key, backups, run folders):"
