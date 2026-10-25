@@ -21,6 +21,14 @@ optimize/lists/mine.txt
 /hadith/
 /verses/
 /unsplash/
+/quran-verify/
+
+# Thmanyah: its licence allows the files only inside a built product, so they come from the private
+# fonts repo (FONTS_REPO) at build time (CI), never from here; urtv.html inlines them, so it is not committed either
+assets/fonts/Thmanyah*.woff2
+android/launcher/src/main/assets/fonts/Thmanyah*.otf
+dist/urtv.html
+.fonts-private/
 
 # private keys never belong in the repo (the page-signing key lives in ~/.urtv, see optimize/sign-page.sh)
 *.pem

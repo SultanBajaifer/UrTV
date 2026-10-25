@@ -14,6 +14,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262   # v4.4.0
+      # Thmanyah's licence allows its files only inside a built product: they come from a private fonts repository
+      # (repository variable FONTS_REPO, secret FONTS_TOKEN: a read-only token for it), never from this repository.
+      # Without them the build goes on and the screen falls back to the system's Arabic font.
+      - name: Is there a fonts repository?
+        id: fonts
+        env:
+          TOKEN: ${{ secrets.FONTS_TOKEN }}
+          REPO: ${{ vars.FONTS_REPO }}
+        run: |
+          if [ -n "$TOKEN" ] && [ -n "$REPO" ]; then echo "have=1" >> "$GITHUB_OUTPUT"
+          else echo "::notice::No FONTS_REPO/FONTS_TOKEN: building without Thmanyah (system Arabic font)"; echo "have=0" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.fonts.outputs.have == '1'
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262   # v4.4.0
+        with:
+          repository: ${{ vars.FONTS_REPO }}
+          token: ${{ secrets.FONTS_TOKEN }}
+          path: .fonts-private
+          persist-credentials: false
+      - name: Private fonts
+        if: steps.fonts.outputs.have == '1'
+        run: |
+          cp .fonts-private/web/*.woff2 assets/fonts/
+          mkdir -p android/launcher/src/main/assets/fonts
+          cp .fonts-private/android/*.otf android/launcher/src/main/assets/fonts/
+          rm -rf .fonts-private
 
       - name: Build the page
         run: python3 src/build.py
