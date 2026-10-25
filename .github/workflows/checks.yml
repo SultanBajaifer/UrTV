@@ -16,17 +16,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262   # v4.4.0
-      # Thmanyah's licence allows its files only inside a built product: they come from a private fonts repository
-      # (repository variable FONTS_REPO, secret FONTS_TOKEN: a read-only token for it), never from this repository.
-      # Without them the build goes on and the screen falls back to the system's Arabic font.
+      # Thmanyah's licence allows its files only inside a built app, so they are never committed: they come from a
+      # private fonts repository when one is set (repository variable FONTS_REPO, secret FONTS_TOKEN: a read-only token),
+      # else from the commit of this repo's history that still had them (.github/tools/fonts.sh)
       - name: Is there a fonts repository?
         id: fonts
         env:
           TOKEN: ${{ secrets.FONTS_TOKEN }}
           REPO: ${{ vars.FONTS_REPO }}
         run: |
-          if [ -n "$TOKEN" ] && [ -n "$REPO" ]; then echo "have=1" >> "$GITHUB_OUTPUT"
-          else echo "::notice::No FONTS_REPO/FONTS_TOKEN: building without Thmanyah (system Arabic font)"; echo "have=0" >> "$GITHUB_OUTPUT"; fi
+          if [ -n "$TOKEN" ] && [ -n "$REPO" ]; then echo "have=1" >> "$GITHUB_OUTPUT"; else echo "have=0" >> "$GITHUB_OUTPUT"; fi
       - if: steps.fonts.outputs.have == '1'
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262   # v4.4.0
         with:
@@ -34,12 +33,9 @@ jobs:
           token: ${{ secrets.FONTS_TOKEN }}
           path: .fonts-private
           persist-credentials: false
-      - name: Private fonts
-        if: steps.fonts.outputs.have == '1'
+      - name: Fonts
         run: |
-          cp .fonts-private/web/*.woff2 assets/fonts/
-          mkdir -p android/launcher/src/main/assets/fonts
-          cp .fonts-private/android/*.otf android/launcher/src/main/assets/fonts/
+          if [ -d .fonts-private ]; then FONTS_DIR=.fonts-private .github/tools/fonts.sh; else .github/tools/fonts.sh; fi
           rm -rf .fonts-private
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020   # v4.4.0
         with:
@@ -52,3 +48,5 @@ jobs:
       - run: pip install fonttools==4.67.0 brotli==1.2.1 pillow==12.3.0 cryptography==50.0.2
       - run: npm install --no-save playwright@1.56.1 && npx playwright install --with-deps chromium
       - run: tests/run.sh
+        env:
+          REQUIRE_FONTS: "1"   # the fonts step above always finds them (fonts repo or history): a missing one is a failure
